@@ -130,6 +130,7 @@ class LiveTraining:
                episode_return, action, info, metrics, elapsed, force=False):
         now = time.monotonic()
         phase = "RANDOM WARM-UP (model not controlling)" if step <= warmup else "MODEL + EXPLORATION NOISE"
+        phase = getattr(self, "training_label", phase)
         if self.mode == "review":
             phase = "SAVED MODEL TEST (no parameter updates)"
         status = {"pid": os.getpid(), "step": step, "total_steps": total, "phase": phase,

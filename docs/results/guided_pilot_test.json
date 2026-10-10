@@ -1,0 +1,357 @@
+{
+  "checkpoint": "runs/guided_pilot_seed7/best_stage1.pt",
+  "training_metadata": {
+    "method": "DrQ-v2 + privileged demonstration pretraining and online imitation; modified reward/curriculum",
+    "bc_updates": 1491,
+    "stage": 1,
+    "seed": 7,
+    "training_steps": 2000,
+    "exact_resume": false
+  },
+  "seed": 60001,
+  "episodes_per_profile": 10,
+  "results": {
+    "stage_1": {
+      "episodes": 10,
+      "successes": 7,
+      "success_rate": 0.7,
+      "config": {
+        "physics_hz": 300,
+        "control_hz": 60,
+        "policy_hz": 30,
+        "episode_seconds": 40.0,
+        "initial_height": 1.5,
+        "offset_xy": 0.65,
+        "offset_z": 0.3,
+        "platform_speed_min": 0.0,
+        "platform_speed_max": 0.3,
+        "platform_yaw_degrees": 180.0,
+        "platform_top": 0.3,
+        "camera_fov": 90.0,
+        "camera_offset_x": 0.045,
+        "camera_offset_z": -0.008,
+        "camera_near": 0.001,
+        "visible_pixels": 1,
+        "horizontal_reward": "normalized_interpretation",
+        "terminal_overrides_visibility": true,
+        "visibility_gate": true,
+        "guard_actual_vertical_velocity": true,
+        "acceleration_limit_xy": 3.0,
+        "acceleration_limit_z": 1.0,
+        "reward_mode": "guided_progress",
+        "escape_distance": 12.0,
+        "lost_view_seconds": 1.0
+      },
+      "rows": [
+        {
+          "seed": 60001,
+          "success": false,
+          "event": "platform_edge",
+          "xy_error": 0.4474529957423469,
+          "return_": -8.004154055308977,
+          "platform_speed_m_s": 0.26427010186002153
+        },
+        {
+          "seed": 60002,
+          "success": true,
+          "event": "success",
+          "xy_error": 0.11761719157801323,
+          "return_": 19.15615270811211,
+          "platform_speed_m_s": 0.19799425887019056
+        },
+        {
+          "seed": 60003,
+          "success": false,
+          "event": "lost_view",
+          "xy_error": 1.1952163717395419,
+          "return_": -18.234567393822942,
+          "platform_speed_m_s": 0.25526360179968577
+        },
+        {
+          "seed": 60004,
+          "success": false,
+          "event": "lost_view",
+          "xy_error": 1.203766716811304,
+          "return_": -18.60605282767156,
+          "platform_speed_m_s": 0.28925141617246114
+        },
+        {
+          "seed": 60005,
+          "success": true,
+          "event": "success",
+          "xy_error": 0.20439169886659078,
+          "return_": 9.724258105704443,
+          "platform_speed_m_s": 0.08511090219610701
+        },
+        {
+          "seed": 60006,
+          "success": true,
+          "event": "success",
+          "xy_error": 0.028263561308260247,
+          "return_": 14.542437830949765,
+          "platform_speed_m_s": 0.18569640200725138
+        },
+        {
+          "seed": 60007,
+          "success": true,
+          "event": "success",
+          "xy_error": 0.0856979762169093,
+          "return_": 16.592575739364875,
+          "platform_speed_m_s": 0.21939171549931868
+        },
+        {
+          "seed": 60008,
+          "success": true,
+          "event": "success",
+          "xy_error": 0.3477814062412258,
+          "return_": 10.959932982539122,
+          "platform_speed_m_s": 0.1562881840011585
+        },
+        {
+          "seed": 60009,
+          "success": true,
+          "event": "success",
+          "xy_error": 0.21507682115874588,
+          "return_": 16.860168538919922,
+          "platform_speed_m_s": 0.17359081358431686
+        },
+        {
+          "seed": 60010,
+          "success": true,
+          "event": "success",
+          "xy_error": 0.14209255569084797,
+          "return_": 18.177931984758068,
+          "platform_speed_m_s": 0.04151246829838834
+        }
+      ]
+    },
+    "stage_2": {
+      "episodes": 10,
+      "successes": 2,
+      "success_rate": 0.2,
+      "config": {
+        "physics_hz": 300,
+        "control_hz": 60,
+        "policy_hz": 30,
+        "episode_seconds": 40.0,
+        "initial_height": 2.5,
+        "offset_xy": 1.0,
+        "offset_z": 0.5,
+        "platform_speed_min": 0.0,
+        "platform_speed_max": 0.5,
+        "platform_yaw_degrees": 180.0,
+        "platform_top": 0.3,
+        "camera_fov": 90.0,
+        "camera_offset_x": 0.045,
+        "camera_offset_z": -0.008,
+        "camera_near": 0.001,
+        "visible_pixels": 1,
+        "horizontal_reward": "normalized_interpretation",
+        "terminal_overrides_visibility": true,
+        "visibility_gate": true,
+        "guard_actual_vertical_velocity": true,
+        "acceleration_limit_xy": 3.0,
+        "acceleration_limit_z": 1.0,
+        "reward_mode": "guided_progress",
+        "escape_distance": 12.0,
+        "lost_view_seconds": 1.0
+      },
+      "rows": [
+        {
+          "seed": 60001,
+          "success": false,
+          "event": "platform_edge",
+          "xy_error": 0.4937677673270883,
+          "return_": -19.60119906066955,
+          "platform_speed_m_s": 0.44045016976670265
+        },
+        {
+          "seed": 60002,
+          "success": false,
+          "event": "platform_edge",
+          "xy_error": 0.47515194668684013,
+          "return_": -26.280736489079292,
+          "platform_speed_m_s": 0.3299904314503176
+        },
+        {
+          "seed": 60003,
+          "success": false,
+          "event": "lost_view",
+          "xy_error": 1.6215826327097467,
+          "return_": -32.73390610139154,
+          "platform_speed_m_s": 0.4254393363328096
+        },
+        {
+          "seed": 60004,
+          "success": false,
+          "event": "lost_view",
+          "xy_error": 1.3116116127522846,
+          "return_": -41.39305283203489,
+          "platform_speed_m_s": 0.4820856936207684
+        },
+        {
+          "seed": 60005,
+          "success": false,
+          "event": "platform_edge",
+          "xy_error": 0.5436759370377544,
+          "return_": -7.1809336029228135,
+          "platform_speed_m_s": 0.14185150366017832
+        },
+        {
+          "seed": 60006,
+          "success": false,
+          "event": "lost_view",
+          "xy_error": 0.7614818736227363,
+          "return_": -25.63965794947932,
+          "platform_speed_m_s": 0.309494003345419
+        },
+        {
+          "seed": 60007,
+          "success": false,
+          "event": "platform_edge",
+          "xy_error": 0.4488427069683505,
+          "return_": -14.898802205317358,
+          "platform_speed_m_s": 0.3656528591655311
+        },
+        {
+          "seed": 60008,
+          "success": false,
+          "event": "lost_view",
+          "xy_error": 1.2106038846060851,
+          "return_": -27.084327854974138,
+          "platform_speed_m_s": 0.2604803066685975
+        },
+        {
+          "seed": 60009,
+          "success": true,
+          "event": "success",
+          "xy_error": 0.024385795389647212,
+          "return_": 11.296302488989642,
+          "platform_speed_m_s": 0.2893180226405281
+        },
+        {
+          "seed": 60010,
+          "success": true,
+          "event": "success",
+          "xy_error": 0.04407450964227154,
+          "return_": 21.392522380633324,
+          "platform_speed_m_s": 0.06918744716398056
+        }
+      ]
+    },
+    "original_paper_task": {
+      "episodes": 10,
+      "successes": 0,
+      "success_rate": 0.0,
+      "config": {
+        "physics_hz": 300,
+        "control_hz": 60,
+        "policy_hz": 30,
+        "episode_seconds": 30.0,
+        "initial_height": 10.0,
+        "offset_xy": 3.0,
+        "offset_z": 3.0,
+        "platform_speed_min": 0.0,
+        "platform_speed_max": 1.0,
+        "platform_yaw_degrees": 0.0,
+        "platform_top": 0.3,
+        "camera_fov": 90.0,
+        "camera_offset_x": 0.045,
+        "camera_offset_z": -0.008,
+        "camera_near": 0.001,
+        "visible_pixels": 1,
+        "horizontal_reward": "normalized_interpretation",
+        "terminal_overrides_visibility": true,
+        "visibility_gate": true,
+        "guard_actual_vertical_velocity": true,
+        "acceleration_limit_xy": 3.0,
+        "acceleration_limit_z": 1.0,
+        "reward_mode": "paper_interpretation",
+        "escape_distance": 0.0,
+        "lost_view_seconds": 0.0
+      },
+      "rows": [
+        {
+          "seed": 60001,
+          "success": false,
+          "event": "timeout",
+          "xy_error": 4.881840717574675,
+          "return_": 151.14755486637495,
+          "platform_speed_m_s": 0.8809003395334053
+        },
+        {
+          "seed": 60002,
+          "success": false,
+          "event": "timeout",
+          "xy_error": 1.307094821094048,
+          "return_": 251.86085607123724,
+          "platform_speed_m_s": 0.6599808629006353
+        },
+        {
+          "seed": 60003,
+          "success": false,
+          "event": "timeout",
+          "xy_error": 0.7646102525307694,
+          "return_": 290.5113708537609,
+          "platform_speed_m_s": 0.8508786726656192
+        },
+        {
+          "seed": 60004,
+          "success": false,
+          "event": "timeout",
+          "xy_error": 7.65144115325387,
+          "return_": 139.4189398791163,
+          "platform_speed_m_s": 0.964171387241537
+        },
+        {
+          "seed": 60005,
+          "success": false,
+          "event": "timeout",
+          "xy_error": 11.626201463445389,
+          "return_": 205.31331866739453,
+          "platform_speed_m_s": 0.2837030073203567
+        },
+        {
+          "seed": 60006,
+          "success": false,
+          "event": "timeout",
+          "xy_error": 0.9644877898623337,
+          "return_": 317.9652339850484,
+          "platform_speed_m_s": 0.618988006690838
+        },
+        {
+          "seed": 60007,
+          "success": false,
+          "event": "timeout",
+          "xy_error": 0.5251236259940605,
+          "return_": 305.56681215928234,
+          "platform_speed_m_s": 0.7313057183310622
+        },
+        {
+          "seed": 60008,
+          "success": false,
+          "event": "timeout",
+          "xy_error": 1.5764914370815042,
+          "return_": 282.04280328272614,
+          "platform_speed_m_s": 0.520960613337195
+        },
+        {
+          "seed": 60009,
+          "success": false,
+          "event": "timeout",
+          "xy_error": 0.9957389938255682,
+          "return_": 292.10532612319554,
+          "platform_speed_m_s": 0.5786360452810562
+        },
+        {
+          "seed": 60010,
+          "success": false,
+          "event": "timeout",
+          "xy_error": 21.6345026200675,
+          "return_": 126.93494968892206,
+          "platform_speed_m_s": 0.13837489432796113
+        }
+      ]
+    }
+  }
+}

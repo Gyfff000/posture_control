@@ -25,6 +25,10 @@ class EnvConfig:
     guard_actual_vertical_velocity: bool = True
     acceleration_limit_xy: float = 3.0
     acceleration_limit_z: float = 1.0
+    reward_mode: str = "paper_interpretation"
+    escape_distance: float = 0.0
+    lost_view_seconds: float = 0.0
+    teacher_descent_fast: float = .35
 
     def to_dict(self):
         return asdict(self)

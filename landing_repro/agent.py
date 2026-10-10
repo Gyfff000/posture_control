@@ -5,6 +5,7 @@ Preserves random shifts, twin Q, truncated exploration, n-step targets and
 critic target averaging. See NOTICE.md for attribution and deviations.
 """
 from collections import deque
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -109,7 +110,7 @@ class DrQV2:
         action = mean if evaluation else self.sample(mean, self.stddev(step))
         return action[0].numpy()
 
-    def update(self, batch, step):
+    def update(self, batch, step, expert=None, bc_weight=0., rl_weight=1., gradient_clip=0.):
         b = {key: torch.as_tensor(value) for key, value in batch.items()}
         feat = torch.cat([self.encoder(self.augment(b["pixels"])), b["proprio"]], dim=-1)
         with torch.no_grad():
@@ -125,16 +126,28 @@ class DrQV2:
         self.optimizers[2].zero_grad(set_to_none=True)
         critic_loss.backward()
         encoder_grad = float(torch.linalg.vector_norm(self.encoder.conv[0].weight.grad))
+        if gradient_clip:
+            torch.nn.utils.clip_grad_norm_(self.encoder.parameters(), gradient_clip)
+            torch.nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip)
         self.optimizers[0].step()
         self.optimizers[2].step()
         self.critic.requires_grad_(False)
         sampled = self.sample(self.actor(feat.detach()), self.stddev(step), self.cfg.noise_clip)
         aq1, aq2 = self.critic(feat.detach(), sampled)
-        actor_loss = -torch.minimum(aq1, aq2).mean()
+        actor_loss = -rl_weight * torch.minimum(aq1, aq2).mean()
+        imitation_loss = torch.tensor(0.)
+        if expert is not None and bc_weight:
+            with torch.no_grad():
+                expert_feat = torch.cat([self.encoder(torch.as_tensor(expert['pixels'])),
+                                         torch.as_tensor(expert['proprio'])], dim=-1)
+            imitation_loss = F.mse_loss(self.actor(expert_feat), torch.as_tensor(expert['action']))
+            actor_loss = actor_loss + bc_weight * imitation_loss
         if not torch.isfinite(actor_loss):
             raise FloatingPointError("Non-finite actor loss")
         self.optimizers[1].zero_grad(set_to_none=True)
         actor_loss.backward()
+        if gradient_clip:
+            torch.nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip)
         self.optimizers[1].step()
         self.critic.requires_grad_(True)
         with torch.no_grad():
@@ -143,13 +156,18 @@ class DrQV2:
         self.updates += 1
         return {"critic_loss": float(critic_loss.detach()), "actor_loss": float(actor_loss.detach()),
                 "batch_reward": float(b["reward"].mean()), "encoder_grad_norm": encoder_grad,
-                "target_q_mean": float(target.mean()), "updates": self.updates}
+                "target_q_mean": float(target.mean()), "updates": self.updates,
+                "imitation_loss": float(imitation_loss.detach())}
 
-    def save(self, path, env_config, steps):
+    def save(self, path, env_config, steps, training_metadata=None):
+        path = Path(path)
+        temporary = path.with_suffix(path.suffix + '.tmp')
         torch.save({"agent_config": self.cfg.to_dict(), "env_config": env_config.to_dict(),
                     "steps": steps, "updates": self.updates,
+                    "training_metadata": training_metadata,
                     **{k: getattr(self, k).state_dict() for k in ("encoder", "actor", "critic", "target")},
-                    "optimizers": [opt.state_dict() for opt in self.optimizers]}, path)
+                    "optimizers": [opt.state_dict() for opt in self.optimizers]}, temporary)
+        temporary.replace(path)
 
     @classmethod
     def load(cls, path):

@@ -10,6 +10,8 @@ DOI: https://doi.org/10.1109/LRA.2024.3379837
 使用整数索引实现随机图像平移，并重写了内存回放、训练和模型保存接口。
 参考提交：c0c650b76c6e5d22a7eb5f2edffd1440fe94f8ef。
 来源：https://github.com/facebookresearch/drqv2
+
+新增 `guided.py` / `train_guided.py` 使用训练真值生成示范与在线纠错标签，并加入监督约束、奖励修改和课程学习。这是本仓库的辅助训练改进，不能视为目标论文的纯 DrQ-v2 原始方法。独立测试仍只将图像和无人机自身状态输入策略。
 上游 MIT 许可保留如下。
 
 ## DrQ-v2 upstream license

@@ -139,6 +139,7 @@ class MovingPlatformLanding(gym.Env):
         self.sim.platform_quat = self.platform_quat
         self.sim.platform_tick = 0
         self.steps, self.elapsed, self.finished = 0, 0.0, False
+        self.invisible_seconds = 0.
         self.applied_velocity = np.zeros(3)
         self.frames.clear()
         self.proprio_frames.clear()
@@ -224,6 +225,7 @@ class MovingPlatformLanding(gym.Env):
         if action.shape != (3,) or not np.isfinite(action).all():
             raise ValueError("Expected three finite normalized velocity commands")
         command = np.clip(action, -1, 1) * LIMITS
+        before_relative = self.state[:3] - (self.platform_position + np.array([0., 0., .04]))
         event = "running"
         pre_contact_velocity = None
         for _ in range(self.cfg.control_hz // self.cfg.policy_hz):
@@ -246,14 +248,36 @@ class MovingPlatformLanding(gym.Env):
         self.steps += 1
         self._observe()
         info = self._info(event, command)
+        self.invisible_seconds = 0. if self.visible else self.invisible_seconds + 1./self.cfg.policy_hz
         info["applied_velocity"] = self.applied_velocity.tolist()
         info["pre_contact_relative_velocity"] = (None if pre_contact_velocity is None else pre_contact_velocity.tolist())
         dxy = float(np.linalg.norm(info["relative_position"][:2]))
         info.update(reward_terms(dxy, self.state[12], command[2], self.visible, event, self.cfg))
+        if self.cfg.reward_mode == "guided_progress":
+            before_potential = np.linalg.norm(before_relative[:2]) + .4 * max(0., before_relative[2])
+            potential = dxy + .4 * max(0., info["relative_position"][2])
+            progress = 4. * (before_potential - potential)
+            tracking = (.04 if dxy < .2 else -.02 * min(dxy, 5.))
+            unsafe_descent = -.08 if dxy > .3 and command[2] < -.1 else 0.
+            info["reward"] = float(progress + tracking + unsafe_descent - .005)
+            if event == "success":
+                info["reward"] = 10.
+            elif event != "running":
+                info["reward"] = -10.
+            info.update(progress_reward=float(progress), tracking_reward=tracking,
+                        unsafe_descent_penalty=unsafe_descent)
+        if self.cfg.escape_distance > 0 and dxy > self.cfg.escape_distance and event == "running":
+            event = info["event"] = "escaped"
+            info["reward"] = -10.
+        if self.cfg.lost_view_seconds > 0 and self.invisible_seconds >= self.cfg.lost_view_seconds and event == "running":
+            event = info["event"] = "lost_view"
+            info["reward"] = -5.
         terminated = event != "running"
         truncated = not terminated and self.elapsed >= self.cfg.episode_seconds - 1e-8
         if truncated:
             info["event"] = "timeout"
+            if self.cfg.reward_mode == "guided_progress":
+                info["reward"] = -2.
         self.finished = terminated or truncated
         return self._observation(), info["reward"], terminated, truncated, info
 

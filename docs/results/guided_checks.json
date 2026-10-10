@@ -1,0 +1,20 @@
+{
+  "lost_view_termination": "passed",
+  "original_mode_unchanged": "passed",
+  "guided_terminal_reward_diagnostic_teacher_only": "passed",
+  "high_stage_descent_schedule": "passed",
+  "real_guided_gradient_updates": {
+    "critic_loss": 0.008135742507874966,
+    "actor_loss": 0.0025896932929754257,
+    "batch_reward": 0.10000000149011612,
+    "encoder_grad_norm": 0.16084024310112,
+    "target_q_mean": 0.05360744893550873,
+    "updates": 1,
+    "imitation_loss": 0.00014654705591965467,
+    "bc_loss": 0.0005552739021368325
+  },
+  "checkpoint_reload_exact": true,
+  "teacher_not_called_in_evaluation": true,
+  "fixed_own_state_image_action_range": 0.6672167778015137,
+  "status": "all checks passed"
+}
