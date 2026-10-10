@@ -6,4 +6,6 @@ conda activate landing-drqv2
 export OMP_NUM_THREADS=2
 export MKL_NUM_THREADS=2
 export PYTHONUNBUFFERED=1
-python -m landing_repro.train "$@"
+export LIBGL_ALWAYS_SOFTWARE=1
+export LP_NUM_THREADS=2
+exec python -m landing_repro.train "$@"
