@@ -1,7 +1,7 @@
 # 复现指南：Autonomous Landing on a Moving Platform Using Vision-Based Deep Reinforcement Learning
 
 > 文档日期：2026-10-10。依据用户提供的论文全文、论文图表和所列官方项目源码整理。
-> 当前交付是环境与实验实施指南；没有运行本文的降落策略训练，没有取得本文的复现成功率。
+> 已在用户的 WSL2 Ubuntu 20.04 上完成 CPU 环境安装、PID 悬停验证和桌面三维飞行演示；没有运行本文的降落策略训练，没有取得本文的复现成功率。
 > 下文标记“论文给出”的内容来自原文；标记“建议”“推断”“待核实”的内容是实施方案，不能作为作者原始配置引用。
 
 ## 1. 明确复现的是哪篇文献
@@ -78,11 +78,12 @@ PyBullet 提供 CPU 渲染器和 OpenGL 可视化，因此“没有 NVIDIA 显�
 
 建议优先采用 **Ubuntu 22.04 + Python 3.10 + CPU PyTorch**。Windows 用户可以通过 WSL2 的 Ubuntu 22.04 使用这一环境。原生 Windows 也可以研究，但 PyBullet 的安装可能需要 C++ 编译工具，初学阶段用 Linux 路线更容易保持一致。
 
-下面是一套用于起步的固定版本组合，**是本指南的建议组合，不是作者公开的原始环境，也尚未在本次任务中完成整套安装验证**：
+下面是一套用于起步的固定版本组合，**是本指南的实施组合，不是作者公开的原始环境**。其中 Python、PyTorch、PyBullet 与无人机库已在 WSL2 Ubuntu 20.04 中通过下述运行验证；DrQ-v2 的任务适配和完整训练尚未验证。
 
 | 依赖 | 建议版本/来源 |
 |---|---|
 | Python | 3.10 |
+| setuptools | 70.3.0，保留旧版仿真库使用的 pkg_resources |
 | gym-pybullet-drones | 提交 `50d1a958def27121bcf63f3cc753049fee8e71e5`，2024-03-24 |
 | PyBullet | 3.2.6 |
 | NumPy / SciPy | 1.24.4 / 1.10.1 |
@@ -130,7 +131,8 @@ mkdir -p ~/uav_landing_repro
 cd ~/uav_landing_repro
 python3.10 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip setuptools wheel
+python -m pip install --upgrade pip wheel
+python -m pip install setuptools==70.3.0
 python --version
 ```
 
@@ -555,7 +557,46 @@ DTD：[官方数据集](https://www.robots.ox.ac.uk/~vgg/data/dtd/)。约 400 �
 | M5：消融与泛化 | 完成 No LOS、固定下降速度、域随机化对照 | 已研究奖励模块和随机化的作用 |
 | M6：完整算法比较 | 实现并评估 FF-IBVS、DDPGLN、Vision SAC | 已完成论文主要仿真对比的复现版本 |
 
-当前已完成的是文献阅读、参数核对和实施指南。M1-M6 的运行验收均仍待执行。本次没有安装完整仿真依赖、没有训练或评估策略。
+截至 2026-10-10，已完成文献阅读、参数核对，以及 M1 仿真底座的安装和运行验收。M2-M6 仍待实施，没有训练或评估论文中的降落策略。具体安装记录见下一节。
+
+### 14.1 本机安装与运行记录（2026-10-10）
+
+目标文献仍为 Ladosz 等人的 **Autonomous Landing on a Moving Platform Using Vision-Based Deep Reinforcement Learning**，DOI：10.1109/LRA.2024.3379837。
+
+| 项目 | 实际配置或结果 |
+|---|---|
+| 系统 | Windows / WSL2 / Ubuntu 20.04，x86_64，WSLg |
+| 独立环境 | Miniforge，环境名 landing-drqv2；未修改系统 Python 3.8 |
+| Python | 3.10.22 |
+| PyTorch | 2.2.2+cpu，CUDA 不可用，CPU 卷积前向和反向检查通过 |
+| 仿真 | PyBullet 3.2.6；gym-pybullet-drones 2.0.0，提交 50d1a958def27121bcf63f3cc753049fee8e71e5 |
+| 其他主要版本 | NumPy 1.24.4、SciPy 1.10.1、Gymnasium 0.28.1、Stable-Baselines3 2.0.0 |
+| 依赖完整性 | pip check 通过 |
+| PID 悬停验证 | 物理频率 240 Hz，控制频率 48 Hz，运行 8 秒；最终到目标点的三维位置误差约 0.00476 m |
+| 相机验证 | CPU TinyRenderer 输出 84×84 非均匀图像；这是渲染接口检查，没有验证论文机载相机的外参配置 |
+| 桌面演示 | Crazyflie / DSLPIDControl，半径 0.35 m、目标高度 0.7 m、周期 12 s 的圆形轨迹；实际三维窗口已启动 |
+| 图形兼容 | Intel D3D12 渲染出现黑画面；设置 LIBGL_ALWAYS_SOFTWARE=1 后，Mesa llvmpipe 软件渲染正常 |
+
+**这些数字属于安装验收和 PID 示例，不是本文的降落精度、降落成功率或 DrQ-v2 训练结果。** 圆形轨迹演示没有移动降落平台，也没有学习策略。
+
+本机启动方式：双击 Windows 桌面的 `启动无人机仿真.cmd`。脚本调用已安装的 WSL 环境，打开 PyBullet 三维窗口，演示最多运行 30 分钟；关闭窗口即可停止。也可以在 Ubuntu 终端执行：
+
+```bash
+source "$HOME/miniforge3/etc/profile.d/conda.sh"
+conda activate landing-drqv2
+bash /mnt/d/perchrl_repro/vision_drqv2_setup/launch_demo.sh
+```
+
+本机文件位置（以下为本次实际安装路径）：
+
+- 安装、验证和演示脚本：`D:\perchrl_repro\vision_drqv2_setup`。
+- 依赖快照：该目录中的 `requirements-installed.txt`；其中 editable 安装路径指向本机 Linux 用户目录，不可原样当作跨机器安装清单。
+- 验收报告：该目录中的 `environment_check.json` 和 `hover_positions.csv`。
+- 实际仿真窗口截图：该目录中的 `simulation_window.png`。
+- Linux 源码：`~/uav_landing_repro/gym-pybullet-drones`。
+- 运行日志：`~/uav_landing_repro/demo_results/demo.log`；演示轨迹记录为同目录下的 `desktop_flight.csv`。
+
+下一步是 M2：添加水平移动平台、下视相机、速度动作接口和接触判定，再接入 DrQ-v2。当前安装了算法所需的常见依赖，但没有把上游 DrQ-v2 的默认 benchmark 改造成本文任务。
 
 组会优先展示真实的仿真窗口、机载相机画面和任务判定日志。截图必须注明是上游示例、自己实现的控制器或学习策略，不能把 PID 演示称为 DrQ-v2 成果。
 
