@@ -1,0 +1,36 @@
+{
+  "controller": "drq",
+  "checkpoint": "runs/live_training_20261010_215941/latest.pt",
+  "episodes": 10,
+  "successes": 0,
+  "success_rate": 0.0,
+  "events": {
+    "ground": 10
+  },
+  "mean_final_xy_error_m": 38.428045790134846,
+  "note": "Small independent-seed evaluation; not the paper's 500-episode, five-seed comparison.",
+  "environment": {
+    "physics_hz": 300,
+    "control_hz": 60,
+    "policy_hz": 30,
+    "episode_seconds": 30.0,
+    "initial_height": 10.0,
+    "offset_xy": 3.0,
+    "offset_z": 3.0,
+    "platform_speed_min": 0.0,
+    "platform_speed_max": 1.0,
+    "platform_yaw_degrees": 0.0,
+    "platform_top": 0.3,
+    "camera_fov": 90.0,
+    "camera_offset_x": 0.045,
+    "camera_offset_z": -0.008,
+    "camera_near": 0.001,
+    "visible_pixels": 1,
+    "horizontal_reward": "normalized_interpretation",
+    "terminal_overrides_visibility": true,
+    "visibility_gate": true,
+    "guard_actual_vertical_velocity": true,
+    "acceleration_limit_xy": 3.0,
+    "acceleration_limit_z": 1.0
+  }
+}

@@ -5,7 +5,9 @@ import time
 import tkinter as tk
 from tkinter import scrolledtext
 
-from PIL import Image, ImageTk
+from PIL import ImageTk
+
+from .scene_views import inspection_views, save_inspection
 
 
 class LiveTraining:
@@ -15,26 +17,43 @@ class LiveTraining:
         self.paused = False
         self.last_draw = 0.
         self.last_status = 0.
+        self.mode = "training"
+        self.replay_requested = False
+        self.focus = "drone"
+        self.snapshot_saved = False
         self.root = tk.Tk()
         self.root.title("LIVE DrQ-v2 TRAINING | actual model + exploration")
-        self.root.geometry("460x850+920+30")
+        self.root.geometry("1040x760+40+30")
         self.root.protocol("WM_DELETE_WINDOW", self.request_stop)
-        tk.Label(self.root, text="LIVE DrQ-v2 CPU TRAINING", font=("Arial", 15, "bold")).pack()
-        tk.Label(self.root, text="Actual training environment | random warm-up, then noisy policy\n"
-                 "A successful landing is NOT guaranteed.", wraplength=450).pack()
-        self.camera = tk.Label(self.root)
-        self.camera.pack()
+        self.heading = tk.Label(self.root, text="LIVE DrQ-v2 CPU TRAINING", font=("Arial", 15, "bold"))
+        self.heading.pack()
+        self.saved_result = tk.Label(self.root, text="Actual physics. External close views are for inspection; policy uses onboard images and own state.", wraplength=1000)
+        self.saved_result.pack()
+        views = tk.Frame(self.root)
+        views.pack(pady=5)
+        self.view_labels = []
+        for title in ("DRONE: real model, tracking close view", "PLATFORM: real model, tracking close view", "ONBOARD: actual policy camera"):
+            group = tk.LabelFrame(views, text=title)
+            group.pack(side="left", padx=3)
+            label = tk.Label(group)
+            label.pack()
+            self.view_labels.append(label)
         self.stats = tk.Label(self.root, text="Starting...", justify="left", anchor="w", font=("Courier", 11))
         self.stats.pack(fill="x", padx=10)
         controls = tk.Frame(self.root)
         controls.pack(pady=6)
         self.pause_button = tk.Button(controls, text="Pause", command=self.toggle_pause)
         self.pause_button.pack(side="left", padx=8)
-        tk.Button(controls, text="Stop and save model", command=self.request_stop).pack(side="left")
+        self.stop_button = tk.Button(controls, text="Stop and save model", command=self.request_stop)
+        self.stop_button.pack(side="left")
+        self.replay_button = tk.Button(controls, text="Test saved model (no training)", command=self.request_replay, state="disabled")
+        self.replay_button.pack(side="left", padx=8)
+        for focus in ("drone", "platform", "overview"):
+            tk.Button(controls, text="3D: " + focus, command=lambda f=focus: setattr(self, "focus", f)).pack(side="left", padx=2)
         tk.Label(self.root, text="Episode results (success / ground / edge / timeout)").pack()
-        self.log = scrolledtext.ScrolledText(self.root, height=9, width=57, state="disabled")
+        self.log = scrolledtext.ScrolledText(self.root, height=6, width=100, state="disabled")
         self.log.pack(fill="both", expand=True, padx=8, pady=5)
-        tk.Label(self.root, text="Model and logs: " + str(output), wraplength=450).pack()
+        tk.Label(self.root, text="Model and logs: " + str(output), wraplength=1000).pack()
         self.pump()
 
     def toggle_pause(self):
@@ -43,6 +62,48 @@ class LiveTraining:
 
     def request_stop(self):
         self.stop = True
+
+    def request_replay(self):
+        self.replay_requested = True
+
+    def show_completed(self, summary):
+        self.mode = "finished"
+        self.heading.configure(text="TRAINING FINISHED - model and results saved")
+        self.saved_result.configure(text=(f"Saved training: {summary['steps']} steps | {summary['updates']} updates | "
+            f"{summary['episodes_completed']} completed episodes | {summary['training_successes']} successful landings\n"
+            "This window stays open. Click 'Test saved model' to run a NEW evaluation, without parameter updates."))
+        self.stats.configure(text="Training has ended. The three views show the last physical state.\n"
+                             "A model checkpoint exists; successful training is not established by saving it.")
+        self.pause_button.configure(state="disabled")
+        self.stop_button.configure(text="Close windows")
+        self.replay_button.configure(state="normal")
+        self.pump()
+
+    def begin_review(self):
+        self.mode = "review"
+        self.paused = False
+        self.heading.configure(text="SAVED MODEL TEST - NO TRAINING / NO PARAMETER UPDATES")
+        self.pause_button.configure(state="normal", text="Pause")
+        self.replay_button.configure(state="disabled")
+        self.root.title("Saved DrQ-v2 model test | drone + platform close views")
+
+    def review_finished(self, results=None):
+        self.mode = "finished"
+        self.heading.configure(text="SAVED MODEL TEST FINISHED - results stay open")
+        self.pause_button.configure(state="disabled")
+        self.replay_button.configure(state="normal")
+        if results is not None:
+            successes = sum(int(row['success']) for row in results)
+            self.stats.configure(text=(f"Completed test episodes: {len(results)} | Successful landings: {successes}\n"
+                "No parameter updates were performed during this test.\n" +
+                "\n".join(f"Test {row['episode']}: {row['event'].upper()} | XY error {row['final_xy_error_m']:.2f} m" for row in results)))
+        status_path = self.output / "live_status.json"
+        if status_path.exists():
+            status = json.loads(status_path.read_text())
+            status.update(state="test_completed" if not self.stop else "test_stopped", mode="review")
+            if results is not None:
+                status.update(episodes_completed=len(results), successes=sum(int(row['success']) for row in results))
+            status_path.write_text(json.dumps(status, indent=2))
 
     def pump(self):
         try:
@@ -58,7 +119,8 @@ class LiveTraining:
             time.sleep(.05)
 
     def episode_result(self, episode, info, episode_return):
-        line = f"Episode {episode}: {info['event'].upper()} | return={episode_return:.2f}\n"
+        prefix = "TEST" if self.mode == "review" else "TRAIN"
+        line = f"{prefix} episode {episode}: {info['event'].upper()} | return={episode_return:.2f}\n"
         self.log.configure(state="normal")
         self.log.insert("end", line)
         self.log.see("end")
@@ -68,27 +130,36 @@ class LiveTraining:
                episode_return, action, info, metrics, elapsed, force=False):
         now = time.monotonic()
         phase = "RANDOM WARM-UP (model not controlling)" if step <= warmup else "MODEL + EXPLORATION NOISE"
+        if self.mode == "review":
+            phase = "SAVED MODEL TEST (no parameter updates)"
         status = {"pid": os.getpid(), "step": step, "total_steps": total, "phase": phase,
                   "updates": updates, "episodes_completed": episode, "successes": successes,
                   "replay_size": replay_size, "event": info["event"], "time_s": info["time_s"],
                   "relative_position": info["relative_position"], "action": action.tolist(),
-                  "wall_seconds": elapsed, "metrics": metrics, "state": "running"}
+                  "wall_seconds": elapsed, "metrics": metrics, "state": "running", "mode": self.mode}
         if force or now - self.last_status >= 1.:
             (self.output / "live_status.json").write_text(json.dumps(status, indent=2))
             self.last_status = now
         if force or now - self.last_draw >= .12:
+            env.debug_camera_focus = self.focus
             env.update_debug_camera()
-            image = ImageTk.PhotoImage(Image.fromarray(env.rgb).resize((300, 300)))
-            self.camera.configure(image=image)
-            self.camera.image = image
+            views = inspection_views(env)
+            for label, view in zip(self.view_labels, views):
+                image = ImageTk.PhotoImage(view)
+                label.configure(image=image)
+                label.image = image
+            if not self.snapshot_saved:
+                save_inspection(views, self.output / "inspection_views.png", phase)
+                self.snapshot_saved = True
             loss = metrics.get("critic_loss")
             loss_text = "pending" if loss is None else f"{loss:.5f}"
             self.stats.configure(text=(f"{phase}\n"
                 f"Steps: {step:6d} / {total}   Updates: {updates}\n"
                 f"Episode: {episode+1}   Completed: {episode}\n"
-                f"Training landings: {successes}   Replay: {replay_size}\n"
+                f"{'Test' if self.mode == 'review' else 'Training'} landings: {successes}   Replay: {replay_size}\n"
                 f"Sim time: {info['time_s']:5.1f}s   Wall: {elapsed:6.1f}s\n"
                 f"Height above deck: {info['relative_position'][2]:6.2f} m\n"
+                f"Horizontal distance to platform: {(info['relative_position'][0]**2+info['relative_position'][1]**2)**.5:6.2f} m | Onboard sees pad: {info['visible']}\n"
                 f"Normalized action: {action[0]:+.2f} {action[1]:+.2f} {action[2]:+.2f}\n"
                 f"Episode return: {episode_return:8.2f}\n"
                 f"Critic loss: {loss_text}\n"

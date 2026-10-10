@@ -18,6 +18,7 @@
 - [运行方法、桌面入口与实现差异](docs/running_cpu_landing.md)
 - [实际实验记录与结果](docs/cpu_experiment_report.md)
 - [桌面观看真实模型训练：窗口、阶段和停止保存](docs/live_training.md)
+- [最新 12000 步桌面训练结果与保存模型的独立测试](docs/live_training_12000_result.md)
 - [任务与算法源码](landing_repro/)
 
 桌面的 PID 调试演示使用平台真值，不能作为 DrQ-v2 学会降落的证据。

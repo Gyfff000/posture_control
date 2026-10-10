@@ -119,9 +119,22 @@ def main():
             if panel:
                 status_path = args.output / "live_status.json"
                 status = json.loads(status_path.read_text()) if status_path.exists() else {}
-                status.update(state="stopped" if stopped else "completed", steps=completed_steps, updates=agent.updates)
+                status.update(state="stopped" if stopped else "completed", step=completed_steps,
+                              steps=completed_steps, updates=agent.updates, metrics=metrics,
+                              episodes_completed=episode, successes=successes)
                 status_path.write_text(json.dumps(status, indent=2))
             print(json.dumps(summary, indent=2), flush=True)
+        if panel and not stopped:
+            panel.show_completed(summary)
+            from .review import run_policy_review
+            while not panel.stop:
+                panel.pump()
+                if panel.replay_requested:
+                    # Store evaluation status separately from the completed training status.
+                    panel.output = args.output / "desktop_test_after_training"
+                    panel.output.mkdir(exist_ok=True)
+                    run_policy_review(panel, env, loaded)
+                time.sleep(.05)
     except Exception as exc:
         if completed_steps:
             agent.save(args.output / "interrupted.pt", ecfg, completed_steps)

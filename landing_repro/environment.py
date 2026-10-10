@@ -259,6 +259,13 @@ class MovingPlatformLanding(gym.Env):
 
     def update_debug_camera(self):
         state = self.state
+        focus = getattr(self, "debug_camera_focus", "overview")
+        if focus == "drone":
+            p.resetDebugVisualizerCamera(.32, 45, -25, state[:3], physicsClientId=self.client)
+            return
+        if focus == "platform":
+            p.resetDebugVisualizerCamera(1.65, 45, -55, self.platform_position, physicsClientId=self.client)
+            return
         center = (state[:3] + self.platform_position) / 2
         distance = max(1.1, np.linalg.norm(state[:3] - self.platform_position) * 1.2)
         p.resetDebugVisualizerCamera(distance, 40, -27, center, physicsClientId=self.client)
