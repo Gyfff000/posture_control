@@ -126,9 +126,18 @@ def main():
                         panel.heading.configure(text='INDEPENDENT VALIDATION - training paused while model is tested')
                         panel.pump()
                     progress = panel.pump if panel else None
-                    current = evaluate(agent, stage_config(stage), 5, 30001, progress=progress)
-                    next_stage = evaluate(agent, stage_config(min(stage+1, 4)), 5, 31001, progress=progress)
-                    paper = evaluate(agent, EnvConfig(), 5, 32001, progress=progress)
+                    def observer(group):
+                        if not panel:
+                            return None
+                        return lambda test_env, ep, count, inf, act, ret, done: panel.validation_frame(
+                            test_env, group, ep, count, inf, act, ret, done,
+                            completed_steps, args.steps, agent.updates)
+                    current = evaluate(agent, stage_config(stage), 5, 30001, progress=progress,
+                                       observer=observer('1/3: current difficulty'))
+                    next_stage = evaluate(agent, stage_config(min(stage+1, 4)), 5, 31001, progress=progress,
+                                          observer=observer('2/3: next difficulty'))
+                    paper = evaluate(agent, EnvConfig(), 5, 32001, progress=progress,
+                                     observer=observer('3/3: original task'))
                     entry = dict(step=completed_steps, stage=stage, current=current, next=next_stage, original_task=paper)
                     scores.append(entry)
                     (args.output/'validations.json').write_text(json.dumps(scores, indent=2))

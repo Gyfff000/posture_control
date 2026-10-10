@@ -174,6 +174,34 @@ class LiveTraining:
             self.pump()
             time.sleep(.03)
 
+    def validation_frame(self, env, group, episode, episodes, info, action,
+                         episode_return, finished, training_step, training_total, updates):
+        """Show the separate evaluation world without counting it as training."""
+        now = time.monotonic()
+        if finished or now - self.last_draw >= .25:
+            for label, view in zip(self.view_labels, inspection_views(env)):
+                image = ImageTk.PhotoImage(view)
+                label.configure(image=image)
+                label.image = image
+            self.heading.configure(text='INDEPENDENT VALIDATION - LIVE TEST FLIGHT / NO LEARNING')
+            self.stats.configure(text=(
+                f'Test group: {group} | Flight {episode}/{episodes}\n'
+                f'Training held at: {training_step}/{training_total} steps | Updates: {updates}\n'
+                f'Test simulation time: {info["time_s"]:.1f} s | Result: {info["event"].upper()}\n'
+                f'Height above deck: {info["relative_position"][2]:.2f} m | Onboard sees pad: {info["visible"]}\n'
+                f'Test return: {episode_return:.2f} | Network action: {action[0]:+.2f} {action[1]:+.2f} {action[2]:+.2f}\n'
+                'Three views show the TEST world. Separate PyBullet window holds the training world.\n'
+                'Training resumes automatically after all three groups (15 test flights).'))
+            self.last_draw = now
+        if finished or now - self.last_status >= 1.:
+            status = dict(pid=os.getpid(), state='validating', mode='validation',
+                          step=training_step, total_steps=training_total, updates=updates,
+                          test_group=group, test_episode=episode, test_episodes=episodes,
+                          test_sim_time=info['time_s'], event=info['event'])
+            (self.output/'live_status.json').write_text(json.dumps(status, indent=2))
+            self.last_status = now
+        self.pump()
+
     def close(self):
         try:
             self.root.destroy()

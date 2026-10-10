@@ -118,7 +118,7 @@ def collect_demonstrations(output, episodes=40, seed=1, max_stage=2):
     return data
 
 
-def evaluate(agent, config, episodes=10, seed=20001, progress=None):
+def evaluate(agent, config, episodes=10, seed=20001, progress=None, observer=None):
     # This function intentionally has no reference to teacher_action.
     env = MovingPlatformLanding(config)
     rows = []
@@ -128,9 +128,12 @@ def evaluate(agent, config, episodes=10, seed=20001, progress=None):
             total = 0.
             step = 0
             while True:
-                obs, reward, term, trunc, info = env.step(agent.act(obs, evaluation=True))
+                action = agent.act(obs, evaluation=True)
+                obs, reward, term, trunc, info = env.step(action)
                 total += reward
                 step += 1
+                if observer:
+                    observer(env, episode+1, episodes, info, action, total, term or trunc)
                 if progress and (step % 30 == 0 or term or trunc):
                     progress()
                 if term or trunc:
