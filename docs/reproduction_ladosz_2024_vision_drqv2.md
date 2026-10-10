@@ -1,7 +1,7 @@
 # 复现指南：Autonomous Landing on a Moving Platform Using Vision-Based Deep Reinforcement Learning
 
 > 文档日期：2026-10-10。依据用户提供的论文全文、论文图表和所列官方项目源码整理。
-> 已在用户的 WSL2 Ubuntu 20.04 上完成 CPU 环境安装、PID 悬停验证和桌面三维飞行演示；没有运行本文的降落策略训练，没有取得本文的复现成功率。
+> 已在用户的 WSL2 Ubuntu 20.04 上完成 CPU 环境、移动平台任务、机载相机、DrQ-v2 短训练与评估流程。实际运行与偏差见 [CPU 运行说明](running_cpu_landing.md) 和 [实验报告](cpu_experiment_report.md)；尚未复现论文规模的训练及其成功率。
 > 下文标记“论文给出”的内容来自原文；标记“建议”“推断”“待核实”的内容是实施方案，不能作为作者原始配置引用。
 
 ## 1. 明确复现的是哪篇文献
@@ -201,7 +201,7 @@ git rev-parse HEAD > ../gym-pybullet-drones-commit.txt
 
 ## 6. 第二步：搭建本文的移动平台降落环境
 
-以下为需要实现的代码任务。当前仓库文档没有提供现成的 `train_landing.py`、降落环境或模型权重，因此本节不列虚构的“一键训练”命令。
+本节描述目标任务。当前已提供 `landing_repro/environment.py`、训练和评估入口；实际可运行命令见 [CPU 运行说明](running_cpu_landing.md)。本机模型保存在 runs 目录，未上传大型权重。以下论文要求与实现补充仍须区分。
 
 ### 6.1 场景和平台运动
 
@@ -557,7 +557,7 @@ DTD：[官方数据集](https://www.robots.ox.ac.uk/~vgg/data/dtd/)。约 400 �
 | M5：消融与泛化 | 完成 No LOS、固定下降速度、域随机化对照 | 已研究奖励模块和随机化的作用 |
 | M6：完整算法比较 | 实现并评估 FF-IBVS、DDPGLN、Vision SAC | 已完成论文主要仿真对比的复现版本 |
 
-截至 2026-10-10，已完成文献阅读、参数核对，以及 M1 仿真底座的安装和运行验收。M2-M6 仍待实施，没有训练或评估论文中的降落策略。具体安装记录见下一节。
+截至 2026-10-10，已完成 M1 仿真底座、M2 移动平台环境及 M3 的 CPU 数据流验收，执行了带明确补充配置的 DrQ-v2 短训练与独立评估。尚未完成 M4 的论文规模训练、M5/M6 正式实验。下节保留初始安装记录，新的实现差异和实际结果见 CPU 运行说明与实验报告。
 
 ### 14.1 本机安装与运行记录（2026-10-10）
 
@@ -596,7 +596,7 @@ bash /mnt/d/perchrl_repro/vision_drqv2_setup/launch_demo.sh
 - Linux 源码：`~/uav_landing_repro/gym-pybullet-drones`。
 - 运行日志：`~/uav_landing_repro/demo_results/demo.log`；演示轨迹记录为同目录下的 `desktop_flight.csv`。
 
-下一步是 M2：添加水平移动平台、下视相机、速度动作接口和接触判定，再接入 DrQ-v2。当前安装了算法所需的常见依赖，但没有把上游 DrQ-v2 的默认 benchmark 改造成本文任务。
+以上为最初安装验收记录。后续已添加水平移动平台、下视相机、速度动作接口和接触判定，并接入 DrQ-v2。参见 [后续可运行实现](running_cpu_landing.md)；不再使用上游默认 MuJoCo benchmark 代替本任务。
 
 组会优先展示真实的仿真窗口、机载相机画面和任务判定日志。截图必须注明是上游示例、自己实现的控制器或学习策略，不能把 PID 演示称为 DrQ-v2 成果。
 

@@ -1,0 +1,25 @@
+{
+  "checkpoint": "runs/cpu_pilot_lr1e4/latest.pt",
+  "real_image_mean_abs_difference": 40.98270975056689,
+  "encoder_feature_mean_abs_difference": 0.1247413232922554,
+  "encoder_feature_abs_mean": 0.13196565210819244,
+  "actor_max_action_image_difference": 2.5033950805664062e-06,
+  "actions": [
+    [
+      0.9999995827674866,
+      0.9999982714653015,
+      -0.9999998211860657
+    ],
+    [
+      0.9999997019767761,
+      0.999995768070221,
+      -0.9999998211860657
+    ],
+    [
+      0.9999974370002747,
+      0.9999985098838806,
+      -0.9999986886978149
+    ]
+  ],
+  "note": "Input-sensitivity diagnostic, not a landing performance measure."
+}

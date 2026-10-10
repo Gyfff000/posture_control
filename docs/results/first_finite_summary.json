@@ -1,0 +1,18 @@
+{
+  "steps": 4000,
+  "updates": 936,
+  "episodes_completed": 4,
+  "training_successes": 0,
+  "wall_seconds": 172.70247411727905,
+  "parameter_max_change": 0.04782341048121452,
+  "checkpoint_action_max_error": 0.0,
+  "final_metrics": {
+    "critic_loss": 1.2582398653030396,
+    "actor_loss": -0.569343626499176,
+    "batch_reward": 0.3052031993865967,
+    "encoder_grad_norm": 0.0,
+    "target_q_mean": 0.5400667786598206,
+    "updates": 936
+  },
+  "status": "CPU short training completed, convergence not established"
+}

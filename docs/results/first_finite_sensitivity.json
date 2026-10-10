@@ -1,0 +1,25 @@
+{
+  "checkpoint": "runs/cpu_short_seed1_safe/latest.pt",
+  "real_image_mean_abs_difference": 40.98270975056689,
+  "encoder_feature_mean_abs_difference": 0.2360409051179886,
+  "encoder_feature_abs_mean": 0.3244815468788147,
+  "actor_max_action_image_difference": 0.0,
+  "actions": [
+    [
+      1.0,
+      1.0,
+      -1.0
+    ],
+    [
+      1.0,
+      1.0,
+      -1.0
+    ],
+    [
+      1.0,
+      1.0,
+      -1.0
+    ]
+  ],
+  "note": "Input-sensitivity diagnostic, not a landing performance measure."
+}

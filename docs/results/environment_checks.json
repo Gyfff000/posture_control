@@ -1,0 +1,70 @@
+{
+  "reward_boundaries": "passed",
+  "terminal_timeout_bootstrap": "passed",
+  "high_visible": true,
+  "near_visible": true,
+  "out_of_view_visible": false,
+  "platform_motion_error_m": 8.881784197001252e-16,
+  "positive_x_velocity_m_s": 1.4972979817731735,
+  "measured_platform_velocity": [
+    0.4,
+    0.0,
+    0.0
+  ],
+  "body_fixed_camera": "passed",
+  "moving_platform_contact": {
+    "event": "success",
+    "success": true,
+    "time_s": 2.466666666666663,
+    "visible": true,
+    "visible_pixels": 7056,
+    "position": [
+      0.9859826995816376,
+      -2.543064386977249e-08,
+      0.3131358293947544
+    ],
+    "platform_position": [
+      0.9866666666666667,
+      0.0,
+      0.26
+    ],
+    "platform_velocity": [
+      0.4,
+      0.0,
+      0.0
+    ],
+    "relative_position": [
+      -0.0006839670850290469,
+      -2.543064386977249e-08,
+      0.013135829394754384
+    ],
+    "relative_velocity": [
+      -0.0021894099687840285,
+      -7.162351005427549e-06,
+      0.00902112539577321
+    ],
+    "rpy": [
+      2.8209596810606102e-06,
+      0.005892749876785361,
+      7.104444561678379e-08
+    ],
+    "command_velocity": [
+      0.4023755192756653,
+      -1.951647954356872e-09,
+      -0.44999998807907104
+    ],
+    "applied_velocity": [
+      0.4023755192756653,
+      -1.951647954356872e-09,
+      -0.44999998807907104
+    ],
+    "r_z": -0.002052425480994866,
+    "r_xy": 0.9997843397505258,
+    "r_landing": 120.0,
+    "reward": 120.0
+  },
+  "ground_collision": "ground",
+  "edge_rejected": "platform_edge",
+  "time_limit": "passed",
+  "status": "all checks passed"
+}

@@ -1,0 +1,15 @@
+# Install torch==2.2.2 from https://download.pytorch.org/whl/cpu first.
+setuptools==70.3.0
+numpy==1.24.4
+scipy==1.10.1
+matplotlib==3.7.5
+transforms3d==0.4.1
+pybullet==3.2.6
+gymnasium==0.28.1
+stable-baselines3==2.0.0
+hydra-core==1.3.2
+opencv-python==4.9.0.80
+tensorboard==2.16.2
+imageio==2.34.0
+imageio-ffmpeg==0.4.9
+gym-pybullet-drones @ git+https://github.com/learnsyslab/gym-pybullet-drones.git@50d1a958def27121bcf63f3cc753049fee8e71e5

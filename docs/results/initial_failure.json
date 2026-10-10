@@ -1,0 +1,7 @@
+{
+  "status": "failed",
+  "reason": "Non-finite critic loss: commanded-velocity-only reward gate permitted extreme positive vertical reward during an uncontrolled descent.",
+  "recorded_after_run": true,
+  "retained_artifacts": ["config.json", "metrics.jsonl", "episodes.csv", "tensorboard"],
+  "resolution": "New run uses explicit actual-vz guard and acceleration-limited velocity commands. This is a documented departure from a literal reading of the printed reward."
+}

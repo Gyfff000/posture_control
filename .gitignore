@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+runs/
+*.pt
+*.xwd
+.venv/
