@@ -35,6 +35,12 @@ class EnvConfig:
     jerk_limit_xy: float = 0.0
     jerk_limit_z: float = 0.0
     velocity_response_seconds: float = .10
+    prediction_guidance: bool = False
+    center_prediction_seconds: float = 2.0
+    center_confidence_tau: float = .85
+    center_min_confidence: float = .10
+    center_min_measurement_quality: float = .35
+    prediction_reward_weight: float = 4.0
 
     def to_dict(self):
         return asdict(self)

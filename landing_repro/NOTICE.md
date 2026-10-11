@@ -45,3 +45,5 @@ SOFTWARE.
 https://github.com/learnsyslab/gym-pybullet-drones
 
 2026-10-11: smooth.py adds own-command memory (30D proprioception), command-smoothness penalties, command-jerk limits and soft-contact shaping. This is a new demonstration-assisted adaptation, not the original paper method or a full CAPS implementation. Privileged platform truth is used only for training labels/rewards and evaluation metrics; evaluated actions use pixels and own state/command memory.
+
+2026-10-11: Optional prediction guidance adds RGB marker PnP, a linear constant-velocity Kalman filter, time-decayed heuristic confidence, and horizontal prediction-progress rewards during partial/failed detection. This auxiliary estimator is neither the policy's hidden output nor a new policy input. It does not use platform truth; physical contact and soft-landing training terms still use simulator state. This is a further adaptation, with learned performance awaiting controlled evaluation.

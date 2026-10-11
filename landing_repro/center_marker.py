@@ -1,4 +1,4 @@
-"""Display-only camera center estimation and bounded constant-velocity prediction.
+"""Camera center estimation and bounded, confidence-weighted prediction.
 
 No segmentation IDs or platform truth are used. This is an auxiliary estimator,
 not an explanation of the network's hidden features or a policy input.
@@ -81,13 +81,16 @@ def detect_center(rgb, own_position, own_quaternion, config):
 
 
 class CenterTracker:
-    def __init__(self,max_prediction_seconds=2.):
+    def __init__(self,max_prediction_seconds=2.,confidence_tau=.85,min_confidence=.10):
         self.max_age=max_prediction_seconds
+        self.confidence_tau=confidence_tau
+        self.min_confidence=min_confidence
         self.reset()
 
     def reset(self):
         self.x=None; self.cov=None; self.time=None; self.last_seen=None
-        self.result=dict(mode='unknown',position=None,age_seconds=None)
+        self.last_quality=0.
+        self.result=dict(mode='unknown',position=None,velocity=None,age_seconds=None,confidence=0.)
         self.line_id=-1; self.text_id=-1
 
     def update(self,rgb,own_position,own_quaternion,config,time_s):
@@ -104,7 +107,12 @@ class CenterTracker:
             self.cov=transition@self.cov@transition.T+.20**2*g@g.T
         measurement=detect_center(rgb,own_position,own_quaternion,config)
         accepted=False
+        reason='not_detected_or_incomplete'
+        if measurement is not None and measurement['confidence']<config.center_min_measurement_quality:
+            reason='low_measurement_quality'
+            measurement=None
         if measurement is not None:
+            reason='innovation_rejected'
             z=measurement['position']
             if self.x is None or time_s-self.last_seen>self.max_age:
                 self.x=np.r_[z,np.zeros(3)]
@@ -126,22 +134,48 @@ class CenterTracker:
                     accepted=True
             if accepted:
                 self.last_seen=time_s
+                self.last_quality=measurement['confidence']
+                reason='complete_marker_accepted'
         age=None if self.last_seen is None else max(0.,time_s-self.last_seen)
-        valid=self.x is not None and age<=self.max_age
+        confidence=0. if age is None else float(self.last_quality*np.exp(-age/self.confidence_tau))
+        valid=self.x is not None and age<=self.max_age and confidence>=self.min_confidence
         self.result=dict(mode='observed' if accepted else 'predicted' if valid else 'unknown',
                          position=self.x[:3].tolist() if valid else None,
                          velocity=self.x[3:].tolist() if valid else None,age_seconds=age,
-                         confidence=measurement['confidence'] if accepted else None,
-                         source='auxiliary RGB square-marker PnP + own pose + constant-velocity Kalman filter; display only')
+                         confidence=confidence if valid else 0.,
+                         last_measurement_quality=self.last_quality,
+                         position_std_m=None if self.cov is None else np.sqrt(np.maximum(0.,np.diag(self.cov)[:3])).tolist(),
+                         reason=reason if valid or age is None else 'prediction_expired_or_low_confidence',
+                         source='auxiliary RGB square-marker PnP + own pose + constant-velocity Kalman filter; heuristic confidence, not network output')
         return self.result
 
 
-def update_center_marker(env):
+def estimate_center(env):
     if not hasattr(env,'_center_tracker'):
-        env._center_tracker=CenterTracker()
+        env._center_tracker=CenterTracker(env.cfg.center_prediction_seconds,
+            env.cfg.center_confidence_tau,env.cfg.center_min_confidence)
     tracker=env._center_tracker
     state=env.state
-    result=tracker.update(env.rgb,state[:3],state[3:7],env.cfg,env.elapsed)
+    return tracker.update(env.rgb,state[:3],state[3:7],env.cfg,env.elapsed)
+
+
+def prediction_progress(before_position,after_position,previous_estimate,current_estimate,dt,weight=4.):
+    """Score actual horizontal motion toward ONE fixed extrapolated target.
+
+    Both distances use the same target: target motion and measurement jumps
+    cannot earn progress for a stationary drone. No simulator platform truth.
+    """
+    if current_estimate['mode']!='predicted' or previous_estimate.get('position') is None:
+        return 0.
+    target=np.asarray(previous_estimate['position'])[:2]+dt*np.asarray(previous_estimate['velocity'])[:2]
+    before=np.linalg.norm(np.asarray(before_position)[:2]-target)
+    after=np.linalg.norm(np.asarray(after_position)[:2]-target)
+    return float(weight*current_estimate['confidence']*np.clip(before-after,-.10,.10))
+
+
+def update_center_marker(env):
+    result=estimate_center(env)
+    tracker=env._center_tracker
     if env.gui:
         if result['position'] is None:
             for identifier in (tracker.line_id,tracker.text_id):
@@ -153,7 +187,7 @@ def update_center_marker(env):
             top=base+[0,0,1.]
             color=[.10,.90,.25] if result['mode']=='observed' else [1.,.55,.0]
             tracker.line_id=p.addUserDebugLine(base,top,color,4,replaceItemUniqueId=tracker.line_id,physicsClientId=env.client)
-            label='VISION center' if result['mode']=='observed' else f'PREDICTED {result["age_seconds"]:.1f}s'
+            label=('VISION center' if result['mode']=='observed' else f'PREDICTED {result["age_seconds"]:.1f}s')+f' C={result["confidence"]:.2f}'
             tracker.text_id=p.addUserDebugText(label,top,textColorRGB=color,textSize=1.1,
                 replaceItemUniqueId=tracker.text_id,physicsClientId=env.client)
     return result
@@ -182,6 +216,8 @@ def overlay(image,result,view,projection):
     mode=result['mode']
     color=(20,220,70) if mode=='observed' else (255,145,0)
     label='VISION estimate' if mode=='observed' else f'PREDICTED {result["age_seconds"]:.1f}s' if mode=='predicted' else 'CENTER UNKNOWN'
+    if mode!='unknown':
+        label+=f' C={result["confidence"]:.2f}'
     if result['position'] is not None:
         base=np.r_[result['position'],1.]
         top=base+np.array([0,0,1.,0])

@@ -1,0 +1,24 @@
+{
+  "partial_marker_predicts_on_first_policy_frame": true,
+  "confidence_decays_with_simulation_time": true,
+  "confidence_samples": [
+    0.4938836015678711,
+    0.4059465228041332,
+    0.32083511029105005,
+    0.2004047518495881,
+    0.12517976766152997
+  ],
+  "expired_prediction_hidden": true,
+  "reacquisition_restores_confidence": true,
+  "reward_approach": 0.04800000000000004,
+  "reward_away": -0.04800000000000004,
+  "reward_stationary": 0.0,
+  "reward_scales_with_confidence": true,
+  "partial_marker_reward_branch_even_with_platform_pixels": true,
+  "headless_prediction_every_control_step": true,
+  "reliable_prediction_extends_one_second_outage": true,
+  "bounded_dropout_termination_seconds": 1.3666666666666667,
+  "raw_images_have_no_annotation": true,
+  "no_prior_observation_no_truth_fallback": true,
+  "status": "passed"
+}

@@ -23,10 +23,12 @@ from .guided import Demonstrations, clone_step, stage_config
 METHOD = 'Assisted visual DrQ-v2 + command memory + smoothness losses + bounded command jerk + soft-contact shaping'
 
 
-def smooth_config(stage=1):
+def smooth_config(stage=1,prediction_guidance=False):
     return replace(stage_config(stage), smooth_observation=True, action_smooth_weight=.10,
                    soft_landing_weight=.10, acceleration_limit_xy=2., acceleration_limit_z=.8,
-                   jerk_limit_xy=8., jerk_limit_z=4., velocity_response_seconds=.10)
+                   jerk_limit_xy=8., jerk_limit_z=4., velocity_response_seconds=.10,
+                   prediction_guidance=prediction_guidance,
+                   center_min_measurement_quality=.45 if prediction_guidance else .35)
 
 
 def smooth_teacher(env):
@@ -70,16 +72,22 @@ class FlightLog:
     fields = ['time_s','x','y','z','platform_x','platform_y','platform_z',
               'relative_x','relative_y','relative_z','vx','vy','vz',
               'action_x','action_y','action_z','applied_vx','applied_vy','applied_vz',
-              'command_ax','command_ay','command_az']
+              'command_ax','command_ay','command_az','center_x','center_y','center_z',
+              'center_confidence','center_age_seconds','prediction_reward','center_mode_id','platform_pixels_visible']
 
     def __init__(self, env):
         self.rows = []
         self.add(env, np.zeros(3), {})
 
     def add(self, env, action, info):
+        center=info.get('center_estimate',getattr(env,'center_estimate',{}))
+        position=center.get('position')
         self.rows.append([env.elapsed, *env.state[:3], *env.platform_position,
             *(env.state[:3]-env.platform_position-np.array([0.,0.,.04])), *env.state[10:13], *action,
-            *env.applied_velocity, *env.command_acceleration])
+            *env.applied_velocity, *env.command_acceleration,
+            *(position if position is not None else [float('nan')]*3),
+            center.get('confidence',0.),center.get('age_seconds') or 0.,info.get('prediction_reward',0.),
+            {'unknown':-1,'predicted':0,'observed':1}.get(center.get('mode'),-1),int(env.visible)])
 
     def save(self, path):
         with Path(path).open('w', newline='') as f:
@@ -104,6 +112,9 @@ class FlightLog:
             jerk_rms_m_s3=float(np.sqrt(np.mean(np.sum(jerk**2,axis=1)))) if len(jerk) else 0.,
             path_length_m=float(np.linalg.norm(np.diff(rows[:,1:4],axis=0),axis=1).sum()),
             contact_relative_velocity_m_s=contact,
+            predicted_frames=int(np.sum(rows[:,self.fields.index('center_mode_id')]==0)),
+            partial_marker_predicted_frames=int(np.sum((rows[:,self.fields.index('center_mode_id')]==0)&(rows[:,self.fields.index('platform_pixels_visible')]>0))),
+            prediction_reward_sum=float(rows[:,self.fields.index('prediction_reward')].sum()),
             contact_xy_speed_m_s=None if contact is None else float(np.linalg.norm(contact[:2])),
             contact_z_speed_m_s=None if contact is None else float(abs(contact[2])))
 
@@ -187,12 +198,13 @@ def benchmark(args):
     out = args.output
     out.mkdir(parents=True,exist_ok=True)
     baseline,_ = DrQV2.load(args.baseline)
-    smooth,_ = DrQV2.load(args.checkpoint)
+    smooth,smooth_metadata = DrQV2.load(args.checkpoint)
+    prediction_enabled=smooth_metadata.get('env_config',{}).get('prediction_guidance',False)
     results = {}
     for stage in args.stages:
         results[str(stage)] = {}
         for name, agent, config in [('baseline',baseline,stage_config(stage)),
-                                    ('smooth',smooth,smooth_config(stage))]:
+                                    ('smooth',smooth,smooth_config(stage,prediction_enabled))]:
             results[str(stage)][name] = evaluate_flights(agent,config,out/f'stage{stage}_{name}',
                                                        args.episodes,args.seed)
     (out/'comparison.json').write_text(json.dumps(results,indent=2))
@@ -230,7 +242,10 @@ def train(args):
     online = Demonstrations(4000,args.seed+1,30)
     agent.cfg.noise_start,agent.cfg.noise_end,agent.cfg.noise_decay_steps = .03,.005,20000
     torch.manual_seed(args.seed)
-    config = smooth_config(args.stage)
+    source_config=source.get('env_config',{})
+    prediction_enabled=source_config.get('prediction_guidance',False) if args.prediction_guidance is None else args.prediction_guidance
+    config = smooth_config(args.stage,prediction_enabled)
+    task_changed=bool(source_config.get('prediction_guidance',False))!=config.prediction_guidance
     env = MovingPlatformLanding(config,gui=args.gui)
     panel = None
     if args.gui:
@@ -244,22 +259,23 @@ def train(args):
     prior_rows=[]
     if args.resume_run and (args.resume_run/'episodes.jsonl').exists():
         prior_rows=[json.loads(line) for line in (args.resume_run/'episodes.jsonl').read_text().splitlines() if line.strip()]
-    prior_episode=max([r['episode'] for r in prior_rows],default=0)
+    source_training=source.get('training_metadata') or {}
+    prior_episode=max(source_training.get('episode',0),max([r['episode'] for r in prior_rows],default=0)) if args.resume_run else 0
     seed_shift=1 if args.resume_run else 0  # Reset a partial flight; do not claim exact state resume.
     obs,_ = env.reset(seed=args.seed*10000+prior_episode+seed_shift)
     flight = FlightLog(env)
     trail_position = env.state[:3]
     start = time.monotonic()
     episode=prior_episode
-    successes=sum(r['success'] for r in prior_rows)
-    softs=sum(r['soft_landing'] for r in prior_rows)
+    successes=source_training.get('training_successes',sum(r['success'] for r in prior_rows)) if args.resume_run else 0
+    softs=source_training.get('soft_landings',sum(r['soft_landing'] for r in prior_rows)) if args.resume_run else 0
     completed=args.step_offset
-    stable=(source.get('training_metadata') or {}).get('stable_validations',0) if args.resume_run else 0
+    stable=source_training.get('stable_validations',0) if args.resume_run and not task_changed else 0
     ret = 0.
     metrics = {}
     validations = []
     best = (-1,-1,float('-inf'))
-    if args.resume_run:
+    if args.resume_run and not task_changed:
         if (args.resume_run/'validations.json').exists():
             validations=json.loads((args.resume_run/'validations.json').read_text())
             ranked=[(v['successes'],v['soft_landings'],-v['jerk_rms_m_s3_mean']) for v in validations if v['episodes']==args.eval_episodes]
@@ -267,11 +283,14 @@ def train(args):
                 best=max(ranked)
         if (args.resume_run/'best.pt').exists():
             shutil.copy2(args.resume_run/'best.pt',out/'best.pt')
+    elif args.resume_run and (args.resume_run/'best.pt').exists():
+        shutil.copy2(args.resume_run/'best.pt',out/'previous_task_best.pt')
     reason = 'budget_reached'
     (out/'config.json').write_text(json.dumps(dict(method=METHOD,arguments={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
         environment=config.to_dict(),source_checkpoint=str(args.checkpoint),
         stop_rule='3 consecutive fixed-stage 20-episode validations: success >=80%, soft >=60%, success-rate range <=5 percentage points',
-        note='Operational stopping rule, not proof of convergence; best model preserved. Teacher labels train only.'),indent=2))
+        task_changed=task_changed,
+        note='Operational stopping rule, not proof of convergence; teacher labels train only. Changed reward tasks reset validation ranking; old best is a separate baseline.'),indent=2))
     def save(name):
         agent.save(out/name,config,completed,dict(method=METHOD,stage=args.stage,
             source_checkpoint=str(args.checkpoint),source_metadata=source.get('training_metadata'),
@@ -285,7 +304,7 @@ def train(args):
                     if panel.stop:
                         reason='user_stopped'; break
                 label = smooth_teacher(env)
-                if env.visible:
+                if env.visible and (not config.prediction_guidance or env.center_estimate['mode']=='observed'):
                     online.add(obs,label)
                 action = agent.act(obs,step)
                 nxt,reward,term,trunc,info = env.step(action)
@@ -309,7 +328,7 @@ def train(args):
                 if panel:
                     panel.training_step=completed
                     panel.training_label=f'SMOOTH MODEL TRAINING | Stage {args.stage} | Soft landings {softs}'
-                    panel.saved_result.configure(text='30D own state + camera; smoothness losses + command jerk limits + soft-contact target.\nBlue = flown path; GREEN/ORANGE center line = auxiliary camera estimate/prediction, display only.')
+                    panel.saved_result.configure(text='30D own state + camera; smoothness losses + command jerk limits + soft-contact target.\nBlue = flown path; GREEN/ORANGE = auxiliary estimate/prediction. '+('Confidence-weighted prediction reward ON; estimate is not a policy input.' if config.prediction_guidance else 'Marker display only.'))
                     panel.update(env,completed,args.steps,0,agent.updates,episode,successes,
                         replay.size,ret,action,info,metrics,time.monotonic()-start,force=term or trunc)
                 if term or trunc:
@@ -393,6 +412,8 @@ def main():
             q.add_argument('--gui',action='store_true')
             q.add_argument('--step-offset',type=int,default=0,help='Restore displayed total step count when resuming a saved run')
             q.add_argument('--resume-run',type=Path,help='Previous run containing episode/validation history; replay and partial flight reset')
+            q.add_argument('--prediction-guidance',action=argparse.BooleanOptionalAction,default=None,
+                help='Confidence-weighted prediction reward; omitted means inherit checkpoint setting')
     args=parser.parse_args()
     if args.command=='prepare': prepare(args)
     elif args.command=='benchmark': benchmark(args)

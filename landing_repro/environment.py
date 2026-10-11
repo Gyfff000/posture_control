@@ -140,6 +140,8 @@ class MovingPlatformLanding(gym.Env):
         self.sim.platform_tick = 0
         self.steps, self.elapsed, self.finished = 0, 0.0, False
         self.invisible_seconds = 0.
+        if hasattr(self,'_center_tracker'):
+            self._center_tracker.reset()
         self.applied_velocity = np.zeros(3)
         self.previous_command = np.zeros(3, np.float32)
         self.command_acceleration = np.zeros(3)
@@ -183,6 +185,9 @@ class MovingPlatformLanding(gym.Env):
             quat *= -1
         own_state = np.concatenate([state[10:13] / LIMITS, quat]).astype(np.float32)
         self.proprio_frames.append(own_state)
+        if self.cfg.prediction_guidance:
+            from .center_marker import estimate_center
+            self.center_estimate=estimate_center(self)
 
     def _observation(self):
         own = np.concatenate(self.proprio_frames)
@@ -234,6 +239,9 @@ class MovingPlatformLanding(gym.Env):
         command = np.clip(action, -1, 1) * LIMITS
         action_change = float(np.mean((np.clip(action, -1, 1) - self.previous_command)**2))
         before_relative = self.state[:3] - (self.platform_position + np.array([0., 0., .04]))
+        before_position=self.state[:3].copy()
+        before_time=self.elapsed
+        previous_estimate=getattr(self,'center_estimate',{})
         event = "running"
         pre_contact_velocity = None
         for _ in range(self.cfg.control_hz // self.cfg.policy_hz):
@@ -285,10 +293,23 @@ class MovingPlatformLanding(gym.Env):
                 info["reward"] = -10.
             info.update(progress_reward=float(progress), tracking_reward=tracking,
                         unsafe_descent_penalty=unsafe_descent)
+        info['prediction_reward']=0.
+        if self.cfg.prediction_guidance:
+            from .center_marker import prediction_progress
+            center=self.center_estimate
+            info['center_estimate']=center
+            # Detector loss includes clipped/partial markers even when some platform pixels remain.
+            # Replace privileged dense guidance in this branch; retain physical terminal outcomes.
+            if center['mode']!='observed' and self.cfg.reward_mode=='guided_progress' and event=='running':
+                predicted_reward=prediction_progress(before_position,self.state[:3],previous_estimate,
+                    center,self.elapsed-before_time,self.cfg.prediction_reward_weight)
+                info.update(prediction_reward=predicted_reward,progress_reward=0.,tracking_reward=0.,
+                    unsafe_descent_penalty=0.,reward=predicted_reward-.005)
         if self.cfg.escape_distance > 0 and dxy > self.cfg.escape_distance and event == "running":
             event = info["event"] = "escaped"
             info["reward"] = -10.
-        if self.cfg.lost_view_seconds > 0 and self.invisible_seconds >= self.cfg.lost_view_seconds and event == "running":
+        prediction_valid=self.cfg.prediction_guidance and self.center_estimate['mode']=='predicted'
+        if self.cfg.lost_view_seconds > 0 and self.invisible_seconds >= self.cfg.lost_view_seconds and event == "running" and not prediction_valid:
             event = info["event"] = "lost_view"
             info["reward"] = -5.
         terminated = event != "running"

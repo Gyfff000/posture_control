@@ -39,7 +39,7 @@ class LiveTraining:
             label = tk.Label(group)
             label.pack()
             self.view_labels.append(label)
-        tk.Label(self.root,text='Center line: GREEN = camera estimate | ORANGE = prediction (max 2s) | UNKNOWN = no estimate. Display only; not a network output.',wraplength=1000).pack()
+        tk.Label(self.root,text='Center line: GREEN = camera estimate | ORANGE = partial/lost detection prediction (max 2s) | C = confidence | UNKNOWN = no estimate. Not a network output.',wraplength=1000).pack()
         self.stats = tk.Label(self.root, text="Starting...", justify="left", anchor="w", font=("Courier", 11))
         self.stats.pack(fill="x", padx=10)
         controls = tk.Frame(self.root)
@@ -142,6 +142,8 @@ class LiveTraining:
                   "wall_seconds": elapsed, "metrics": metrics, "state": "running", "mode": self.mode}
         center=update_center_marker(env)
         status['center_estimate']=center
+        status['prediction_reward']=info.get('prediction_reward',0.)
+        status['prediction_guidance']=env.cfg.prediction_guidance
         if force or now - self.last_status >= 1.:
             (self.output / "live_status.json").write_text(json.dumps(status, indent=2))
             self.last_status = now
@@ -168,7 +170,8 @@ class LiveTraining:
                 f"Normalized action: {action[0]:+.2f} {action[1]:+.2f} {action[2]:+.2f}\n"
                 f"Episode return: {episode_return:8.2f}\n"
                 f"Critic loss: {loss_text}\n"
-                f"Current result: {info['event'].upper()} | Center: {center['mode'].upper()}"))
+                f"Current result: {info['event'].upper()} | Center: {center['mode'].upper()} | Confidence: {center.get('confidence',0.):.2f}\n"
+                f"Since full detection: {center.get('age_seconds') or 0.:.2f}s | Prediction reward: {info.get('prediction_reward',0.):+.4f} | Guidance: {'ON' if env.cfg.prediction_guidance else 'OFF'}"))
             self.last_draw = now
         self.pump()
 
@@ -194,6 +197,7 @@ class LiveTraining:
                 f'Test simulation time: {info["time_s"]:.1f} s | Result: {info["event"].upper()}\n'
                 f'Height above deck: {info["relative_position"][2]:.2f} m | Onboard sees pad: {info["visible"]}\n'
                 f'Test return: {episode_return:.2f} | Network action: {action[0]:+.2f} {action[1]:+.2f} {action[2]:+.2f}\n'
+                f'Center: {env._center_tracker.result["mode"]} | C={env._center_tracker.result.get("confidence",0.):.2f} | Prediction reward={info.get("prediction_reward",0.):+.4f}\n'
                 'Three views show the TEST world. Separate PyBullet window holds the training world.\n'
                 'Training resumes automatically when validation finishes.'))
             self.last_draw = now
