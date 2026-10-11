@@ -8,6 +8,7 @@ from tkinter import scrolledtext
 from PIL import ImageTk
 
 from .scene_views import inspection_views, save_inspection
+from .center_marker import update_center_marker
 
 
 class LiveTraining:
@@ -32,12 +33,13 @@ class LiveTraining:
         views = tk.Frame(self.root)
         views.pack(pady=5)
         self.view_labels = []
-        for title in ("DRONE: real model, tracking close view", "PLATFORM: real model, tracking close view", "ONBOARD: actual policy camera"):
+        for title in ("DRONE: real model, tracking close view", "PLATFORM: real model, tracking close view", "ONBOARD: camera + display-only marker"):
             group = tk.LabelFrame(views, text=title)
             group.pack(side="left", padx=3)
             label = tk.Label(group)
             label.pack()
             self.view_labels.append(label)
+        tk.Label(self.root,text='Center line: GREEN = camera estimate | ORANGE = prediction (max 2s) | UNKNOWN = no estimate. Display only; not a network output.',wraplength=1000).pack()
         self.stats = tk.Label(self.root, text="Starting...", justify="left", anchor="w", font=("Courier", 11))
         self.stats.pack(fill="x", padx=10)
         controls = tk.Frame(self.root)
@@ -138,6 +140,8 @@ class LiveTraining:
                   "replay_size": replay_size, "event": info["event"], "time_s": info["time_s"],
                   "relative_position": info["relative_position"], "action": action.tolist(),
                   "wall_seconds": elapsed, "metrics": metrics, "state": "running", "mode": self.mode}
+        center=update_center_marker(env)
+        status['center_estimate']=center
         if force or now - self.last_status >= 1.:
             (self.output / "live_status.json").write_text(json.dumps(status, indent=2))
             self.last_status = now
@@ -164,7 +168,7 @@ class LiveTraining:
                 f"Normalized action: {action[0]:+.2f} {action[1]:+.2f} {action[2]:+.2f}\n"
                 f"Episode return: {episode_return:8.2f}\n"
                 f"Critic loss: {loss_text}\n"
-                f"Current result: {info['event'].upper()}"))
+                f"Current result: {info['event'].upper()} | Center: {center['mode'].upper()}"))
             self.last_draw = now
         self.pump()
 
@@ -198,6 +202,7 @@ class LiveTraining:
                           step=training_step, total_steps=training_total, updates=updates,
                           test_group=group, test_episode=episode, test_episodes=episodes,
                           test_sim_time=info['time_s'], event=info['event'])
+            status['center_estimate']=update_center_marker(env)
             (self.output/'live_status.json').write_text(json.dumps(status, indent=2))
             self.last_status = now
         self.pump()

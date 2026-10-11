@@ -8,6 +8,7 @@ import csv
 from dataclasses import replace
 import json
 from pathlib import Path
+import shutil
 import time
 
 import numpy as np
@@ -240,15 +241,32 @@ def train(args):
         panel.focus = 'overview'
         panel.training_total = args.steps
     replay = Replay(4000,agent.cfg.n_step,agent.cfg.discount,args.seed)
-    obs,_ = env.reset(seed=args.seed*10000)
+    prior_rows=[]
+    if args.resume_run and (args.resume_run/'episodes.jsonl').exists():
+        prior_rows=[json.loads(line) for line in (args.resume_run/'episodes.jsonl').read_text().splitlines() if line.strip()]
+    prior_episode=max([r['episode'] for r in prior_rows],default=0)
+    seed_shift=1 if args.resume_run else 0  # Reset a partial flight; do not claim exact state resume.
+    obs,_ = env.reset(seed=args.seed*10000+prior_episode+seed_shift)
     flight = FlightLog(env)
     trail_position = env.state[:3]
     start = time.monotonic()
-    episode = successes = softs = completed = stable = 0
+    episode=prior_episode
+    successes=sum(r['success'] for r in prior_rows)
+    softs=sum(r['soft_landing'] for r in prior_rows)
+    completed=args.step_offset
+    stable=(source.get('training_metadata') or {}).get('stable_validations',0) if args.resume_run else 0
     ret = 0.
     metrics = {}
     validations = []
     best = (-1,-1,float('-inf'))
+    if args.resume_run:
+        if (args.resume_run/'validations.json').exists():
+            validations=json.loads((args.resume_run/'validations.json').read_text())
+            ranked=[(v['successes'],v['soft_landings'],-v['jerk_rms_m_s3_mean']) for v in validations if v['episodes']==args.eval_episodes]
+            if ranked:
+                best=max(ranked)
+        if (args.resume_run/'best.pt').exists():
+            shutil.copy2(args.resume_run/'best.pt',out/'best.pt')
     reason = 'budget_reached'
     (out/'config.json').write_text(json.dumps(dict(method=METHOD,arguments={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
         environment=config.to_dict(),source_checkpoint=str(args.checkpoint),
@@ -257,10 +275,11 @@ def train(args):
     def save(name):
         agent.save(out/name,config,completed,dict(method=METHOD,stage=args.stage,
             source_checkpoint=str(args.checkpoint),source_metadata=source.get('training_metadata'),
-            stable_validations=stable,exact_resume=False))
+            stable_validations=stable,episode=episode,training_successes=successes,
+            soft_landings=softs,exact_resume=False))
     try:
         with (out/'episodes.jsonl').open('w') as log, (out/'metrics.jsonl').open('w') as metric_log:
-            for step in range(args.steps):
+            for step in range(args.step_offset,args.steps):
                 if panel:
                     panel.wait_if_paused()
                     if panel.stop:
@@ -290,7 +309,7 @@ def train(args):
                 if panel:
                     panel.training_step=completed
                     panel.training_label=f'SMOOTH MODEL TRAINING | Stage {args.stage} | Soft landings {softs}'
-                    panel.saved_result.configure(text='30D own state + camera; smoothness losses + command jerk limits + soft-contact target.\nBlue 3D trail is the actual flight path. Noise is present during training; validation has no exploration noise.')
+                    panel.saved_result.configure(text='30D own state + camera; smoothness losses + command jerk limits + soft-contact target.\nBlue = flown path; GREEN/ORANGE center line = auxiliary camera estimate/prediction, display only.')
                     panel.update(env,completed,args.steps,0,agent.updates,episode,successes,
                         replay.size,ret,action,info,metrics,time.monotonic()-start,force=term or trunc)
                 if term or trunc:
@@ -301,7 +320,7 @@ def train(args):
                     print('SMOOTH NETWORK TRAIN',row,flush=True)
                     if panel:
                         panel.episode_result(episode,info,ret); panel.hold_result(.4)
-                    obs,_=env.reset(seed=args.seed*10000+episode)
+                    obs,_=env.reset(seed=args.seed*10000+episode+seed_shift)
                     flight=FlightLog(env); ret=0.
                     trail_position=env.state[:3]
                 if completed%1000==0:
@@ -372,6 +391,8 @@ def main():
             q.add_argument('--eval-every',type=int,default=5000)
             q.add_argument('--eval-episodes',type=int,default=20)
             q.add_argument('--gui',action='store_true')
+            q.add_argument('--step-offset',type=int,default=0,help='Restore displayed total step count when resuming a saved run')
+            q.add_argument('--resume-run',type=Path,help='Previous run containing episode/validation history; replay and partial flight reset')
     args=parser.parse_args()
     if args.command=='prepare': prepare(args)
     elif args.command=='benchmark': benchmark(args)

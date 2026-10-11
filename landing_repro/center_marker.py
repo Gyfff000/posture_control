@@ -1,0 +1,201 @@
+"""Display-only camera center estimation and bounded constant-velocity prediction.
+
+No segmentation IDs or platform truth are used. This is an auxiliary estimator,
+not an explanation of the network's hidden features or a policy input.
+"""
+from functools import lru_cache
+
+import cv2
+import numpy as np
+import pybullet as p
+from PIL import Image, ImageDraw
+
+
+@lru_cache(maxsize=1)
+def reference_mask():
+    # Known printed design and physical size are calibration inputs, not live truth.
+    from .environment import make_assets
+    _, path = make_assets()
+    gray = cv2.imread(str(path),cv2.IMREAD_GRAYSCALE)
+    return cv2.resize(gray,(96,96))[8:88,8:88] < 100
+
+
+def detect_center(rgb, own_position, own_quaternion, config):
+    gray=cv2.cvtColor(rgb,cv2.COLOR_RGB2GRAY)
+    h,w=gray.shape
+    dark=(gray<100).astype(np.uint8)*255
+    # TinyRenderer undersamples the thin black square into separated dots at 84px.
+    # Close one-pixel gaps; keep original contours as candidates for close views.
+    joined=cv2.morphologyEx(dark,cv2.MORPH_CLOSE,np.ones((3,3),np.uint8))
+    contours,_=cv2.findContours(joined,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+    raw_contours,_=cv2.findContours(dark,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+    contours=list(contours)+list(raw_contours)
+    regions,_=cv2.findContours(cv2.dilate(dark,np.ones((3,3),np.uint8)),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+    for region in regions:
+        x,y,rw,rh=cv2.boundingRect(region)
+        ys,xs=np.nonzero(dark[y:y+rh,x:x+rw])
+        if len(xs)>=12:
+            points=np.column_stack([xs+x,ys+y]).astype(np.int32).reshape(-1,1,2)
+            contours.append(cv2.convexHull(points))
+    for contour in sorted(contours,key=cv2.contourArea,reverse=True):
+        area=cv2.contourArea(contour)
+        if area<25 or area>.95*h*w:
+            continue
+        quad=cv2.approxPolyDP(contour,.025*cv2.arcLength(contour,True),True)
+        if len(quad)!=4 or not cv2.isContourConvex(quad):
+            continue
+        quad=quad[:,0].astype(np.float32)
+        if np.any(quad<1) or np.any(quad[:,0]>w-2) or np.any(quad[:,1]>h-2):
+            continue  # Clipped shapes cannot give a trustworthy complete marker pose.
+        center=quad.mean(axis=0)
+        quad=quad[np.argsort(np.arctan2(quad[:,1]-center[1],quad[:,0]-center[0]))]
+        quad=np.roll(quad,-np.argmin(quad.sum(axis=1)),axis=0)
+        warp=cv2.warpPerspective(gray,cv2.getPerspectiveTransform(quad,np.array([[0,0],[95,0],[95,95],[0,95]],np.float32)),(96,96))
+        low,high=np.percentile(warp,[5,95])
+        if high-low<50:
+            continue
+        dark=warp[8:88,8:88]<(low+.45*(high-low))
+        ref=reference_mask()
+        overlap=max(np.logical_and(dark,np.rot90(ref,k)).sum()/max(1,np.logical_or(dark,np.rot90(ref,k)).sum()) for k in range(4))
+        if overlap<.35:
+            continue
+        f=h/(2*np.tan(np.deg2rad(config.camera_fov)/2))
+        intrinsic=np.array([[f,0,w/2],[0,f,h/2],[0,0,1]],np.float64)
+        obj=np.array([[-.5,.5,0],[.5,.5,0],[.5,-.5,0],[-.5,-.5,0]],np.float64)
+        ok,rvec,tvec=cv2.solvePnP(obj,quad.astype(np.float64),intrinsic,np.zeros(5),flags=cv2.SOLVEPNP_ITERATIVE)
+        if not ok or not np.isfinite(tvec).all() or not .03<tvec[2,0]<100:
+            continue
+        projected,_=cv2.projectPoints(obj,rvec,tvec,intrinsic,np.zeros(5))
+        reprojection=float(np.linalg.norm(projected[:,0]-quad,axis=1).mean())
+        if reprojection>2.:
+            continue
+        rotation=np.array(p.getMatrixFromQuaternion(own_quaternion)).reshape(3,3)
+        forward=rotation@np.array([0.,0.,-1.])
+        up=rotation@np.array([1.,0.,0.])
+        right=np.cross(forward,up)
+        eye=own_position+rotation@np.array([config.camera_offset_x,0.,config.camera_offset_z])
+        world=eye+np.column_stack([right,-up,forward])@tvec[:,0]
+        return dict(position=world,confidence=float(overlap),reprojection_pixels=reprojection,
+                    depth=float(tvec[2,0]),quad=quad)
+    return None
+
+
+class CenterTracker:
+    def __init__(self,max_prediction_seconds=2.):
+        self.max_age=max_prediction_seconds
+        self.reset()
+
+    def reset(self):
+        self.x=None; self.cov=None; self.time=None; self.last_seen=None
+        self.result=dict(mode='unknown',position=None,age_seconds=None)
+        self.line_id=-1; self.text_id=-1
+
+    def update(self,rgb,own_position,own_quaternion,config,time_s):
+        if self.time is not None and time_s<self.time-1e-9:
+            self.reset()
+        if self.time is not None and abs(time_s-self.time)<1e-9:
+            return self.result
+        dt=0. if self.time is None else time_s-self.time
+        self.time=time_s
+        if self.x is not None:
+            transition=np.eye(6); transition[:3,3:]=np.eye(3)*dt
+            self.x=transition@self.x
+            g=np.vstack([np.eye(3)*dt*dt/2,np.eye(3)*dt])
+            self.cov=transition@self.cov@transition.T+.20**2*g@g.T
+        measurement=detect_center(rgb,own_position,own_quaternion,config)
+        accepted=False
+        if measurement is not None:
+            z=measurement['position']
+            if self.x is None or time_s-self.last_seen>self.max_age:
+                self.x=np.r_[z,np.zeros(3)]
+                self.cov=np.diag([.03**2]*3+[.7**2]*3)
+                accepted=True
+            else:
+                noise=(.015+.01*measurement['depth'])**2*np.eye(3)
+                innovation=z-self.x[:3]
+                s=self.cov[:3,:3]+noise
+                if innovation@np.linalg.solve(s,innovation)<25:
+                    gain=self.cov[:,:3]@np.linalg.inv(s)
+                    self.x+=gain@innovation
+                    # Joseph update keeps covariance positive under repeated updates.
+                    kh=np.zeros((6,6)); kh[:,:3]=gain
+                    self.cov=(np.eye(6)-kh)@self.cov@(np.eye(6)-kh).T+gain@noise@gain.T
+                    speed=np.linalg.norm(self.x[3:])
+                    if speed>3.:
+                        self.x[3:]*=3./speed
+                    accepted=True
+            if accepted:
+                self.last_seen=time_s
+        age=None if self.last_seen is None else max(0.,time_s-self.last_seen)
+        valid=self.x is not None and age<=self.max_age
+        self.result=dict(mode='observed' if accepted else 'predicted' if valid else 'unknown',
+                         position=self.x[:3].tolist() if valid else None,
+                         velocity=self.x[3:].tolist() if valid else None,age_seconds=age,
+                         confidence=measurement['confidence'] if accepted else None,
+                         source='auxiliary RGB square-marker PnP + own pose + constant-velocity Kalman filter; display only')
+        return self.result
+
+
+def update_center_marker(env):
+    if not hasattr(env,'_center_tracker'):
+        env._center_tracker=CenterTracker()
+    tracker=env._center_tracker
+    state=env.state
+    result=tracker.update(env.rgb,state[:3],state[3:7],env.cfg,env.elapsed)
+    if env.gui:
+        if result['position'] is None:
+            for identifier in (tracker.line_id,tracker.text_id):
+                if identifier>=0:
+                    p.removeUserDebugItem(identifier,physicsClientId=env.client)
+            tracker.line_id=tracker.text_id=-1
+        else:
+            base=np.asarray(result['position'])
+            top=base+[0,0,1.]
+            color=[.10,.90,.25] if result['mode']=='observed' else [1.,.55,.0]
+            tracker.line_id=p.addUserDebugLine(base,top,color,4,replaceItemUniqueId=tracker.line_id,physicsClientId=env.client)
+            label='VISION center' if result['mode']=='observed' else f'PREDICTED {result["age_seconds"]:.1f}s'
+            tracker.text_id=p.addUserDebugText(label,top,textColorRGB=color,textSize=1.1,
+                replaceItemUniqueId=tracker.text_id,physicsClientId=env.client)
+    return result
+
+
+def clipped_segment(a,b):
+    # Clip homogeneous points against the complete OpenGL view volume.
+    lo,hi=0.,1.
+    for axis in range(3):
+        for sign in (-1.,1.):
+            fa=a[3]+sign*a[axis]; fb=b[3]+sign*b[axis]
+            if fa<0 and fb<0:
+                return None
+            if fa<0 or fb<0:
+                crossing=fa/(fa-fb)
+                if fa<0: lo=max(lo,crossing)
+                else: hi=min(hi,crossing)
+    if lo>hi:
+        return None
+    return a+lo*(b-a),a+hi*(b-a)
+
+
+def overlay(image,result,view,projection):
+    image=image.copy()
+    draw=ImageDraw.Draw(image)
+    mode=result['mode']
+    color=(20,220,70) if mode=='observed' else (255,145,0)
+    label='VISION estimate' if mode=='observed' else f'PREDICTED {result["age_seconds"]:.1f}s' if mode=='predicted' else 'CENTER UNKNOWN'
+    if result['position'] is not None:
+        base=np.r_[result['position'],1.]
+        top=base+np.array([0,0,1.,0])
+        matrix=np.asarray(projection).reshape(4,4,order='F')@np.asarray(view).reshape(4,4,order='F')
+        line=clipped_segment(matrix@base,matrix@top)
+        def pixel(v):
+            return ((v[0]/v[3]+1)*image.width/2,(1-v[1]/v[3])*image.height/2)
+        if line is not None and min(line[0][3],line[1][3])>1e-8:
+            draw.line([pixel(line[0]),pixel(line[1])],fill=color,width=3)
+        point=matrix@base
+        if point[3]>0 and np.all(np.abs(point[:3])<=point[3]):
+            x,y=pixel(point)
+            draw.line([(x-5,y),(x+5,y)],fill=color,width=2)
+            draw.line([(x,y-5),(x,y+5)],fill=color,width=2)
+    draw.rectangle((0,0,image.width,16),fill=(25,25,25))
+    draw.text((4,2),label,fill=color if mode!='unknown' else (190,190,190))
+    return image

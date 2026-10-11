@@ -1,0 +1,8 @@
+{
+  "rendered_camera_center_error_m": 0.10592680300975328,
+  "dropout_constant_velocity_prediction": true,
+  "timeout_hides_unreliable_prediction": true,
+  "episode_reset_clears_estimate": true,
+  "raw_model_images_unchanged": true,
+  "status": "passed"
+}
