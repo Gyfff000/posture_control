@@ -17,6 +17,11 @@ def main():
     for _ in range(50):
         if not request.exists():
             print('Training window restored and raised by the running monitor.')
+            try:
+                from .x11_window import restore_bullet_window
+                print('PyBullet restore requested:', restore_bullet_window())
+            except (OSError, RuntimeError) as error:
+                print('Training continues; could not restore the separate 3D window:', error)
             return
         time.sleep(.1)
     raise RuntimeError('Monitor did not acknowledge the display request; model was not restarted')
