@@ -51,6 +51,10 @@ class EnvConfig:
     near_command_slew_xy: float = .60
     near_command_slew_z: float = .30
     near_unknown_grace_seconds: float = 2.0
+    terminal_finish_enabled: bool = False
+    terminal_entry_height: float = .22
+    terminal_finish_seconds: float = 4.0
+    terminal_finish_speed: float = .10
 
     def to_dict(self):
         return asdict(self)

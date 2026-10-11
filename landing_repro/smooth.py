@@ -23,13 +23,13 @@ from .guided import Demonstrations, clone_step, stage_config
 METHOD = 'Assisted visual DrQ-v2 + command memory + smoothness losses + bounded command jerk + soft-contact shaping'
 
 
-def smooth_config(stage=1,prediction_guidance=False,near_landing_assist=False):
+def smooth_config(stage=1,prediction_guidance=False,near_landing_assist=False,terminal_finish_enabled=False):
     return replace(stage_config(stage), smooth_observation=True, action_smooth_weight=.10,
                    soft_landing_weight=.10, acceleration_limit_xy=2., acceleration_limit_z=.8,
                    jerk_limit_xy=8., jerk_limit_z=4., velocity_response_seconds=.10,
                    prediction_guidance=prediction_guidance,
                    center_min_measurement_quality=.45 if prediction_guidance else .35,
-                   near_landing_assist=near_landing_assist)
+                   near_landing_assist=near_landing_assist,terminal_finish_enabled=terminal_finish_enabled)
 
 
 def smooth_teacher(env):
@@ -76,7 +76,7 @@ class FlightLog:
               'command_ax','command_ay','command_az','center_x','center_y','center_z',
               'center_confidence','center_age_seconds','prediction_reward','center_mode_id','platform_pixels_visible',
               'executed_action_x','executed_action_y','executed_action_z','near_active','near_blend',
-              'near_center_reward','near_descent_allowed']
+              'near_center_reward','near_descent_allowed','terminal_active','terminal_seconds']
 
     def __init__(self, env):
         self.rows = []
@@ -93,7 +93,8 @@ class FlightLog:
             {'unknown':-1,'predicted':0,'observed':1}.get(center.get('mode'),-1),int(env.visible),
             *info.get('executed_normalized_action',action),int(info.get('near_guard',{}).get('active',False)),
             info.get('near_guard',{}).get('blend',0.),info.get('near_center_reward',0.),
-            int(info.get('near_guard',{}).get('descent_allowed',True))])
+            int(info.get('near_guard',{}).get('descent_allowed',True)),
+            int(info.get('near_guard',{}).get('terminal_active',False)),info.get('near_guard',{}).get('terminal_seconds',0.)])
 
     def save(self, path):
         with Path(path).open('w', newline='') as f:
@@ -125,6 +126,7 @@ class FlightLog:
             partial_marker_predicted_frames=int(np.sum((rows[:,self.fields.index('center_mode_id')]==0)&(rows[:,self.fields.index('platform_pixels_visible')]>0))),
             prediction_reward_sum=float(rows[:,self.fields.index('prediction_reward')].sum()),
             near_guard_frames=int(np.sum(rows[:,self.fields.index('near_active')]>0)),
+            terminal_finish_frames=int(np.sum(rows[:,self.fields.index('terminal_active')]>0)),
             near_center_reward_sum=float(rows[:,self.fields.index('near_center_reward')].sum()),
             contact_xy_speed_m_s=None if contact is None else float(np.linalg.norm(contact[:2])),
             contact_z_speed_m_s=None if contact is None else float(abs(contact[2])))
@@ -212,11 +214,12 @@ def benchmark(args):
     smooth,smooth_metadata = DrQV2.load(args.checkpoint)
     prediction_enabled=smooth_metadata.get('env_config',{}).get('prediction_guidance',False)
     near_enabled=smooth_metadata.get('env_config',{}).get('near_landing_assist',False)
+    terminal_enabled=smooth_metadata.get('env_config',{}).get('terminal_finish_enabled',False)
     results = {}
     for stage in args.stages:
         results[str(stage)] = {}
         for name, agent, config in [('baseline',baseline,stage_config(stage)),
-                                    ('smooth',smooth,smooth_config(stage,prediction_enabled,near_enabled))]:
+                                    ('smooth',smooth,smooth_config(stage,prediction_enabled,near_enabled,terminal_enabled))]:
             results[str(stage)][name] = evaluate_flights(agent,config,out/f'stage{stage}_{name}',
                                                        args.episodes,args.seed)
     (out/'comparison.json').write_text(json.dumps(results,indent=2))
@@ -257,8 +260,9 @@ def train(args):
     source_config=source.get('env_config',{})
     prediction_enabled=source_config.get('prediction_guidance',False) if args.prediction_guidance is None else args.prediction_guidance
     near_enabled=source_config.get('near_landing_assist',False) if args.near_landing_assist is None else args.near_landing_assist
-    config = smooth_config(args.stage,prediction_enabled,near_enabled)
-    task_changed=any(bool(source_config.get(key,False))!=getattr(config,key) for key in ('prediction_guidance','near_landing_assist'))
+    terminal_enabled=source_config.get('terminal_finish_enabled',False) if args.terminal_finish_assist is None else args.terminal_finish_assist
+    config = smooth_config(args.stage,prediction_enabled,near_enabled,terminal_enabled)
+    task_changed=any(bool(source_config.get(key,False))!=getattr(config,key) for key in ('prediction_guidance','near_landing_assist','terminal_finish_enabled'))
     env = MovingPlatformLanding(config,gui=args.gui)
     panel = None
     if args.gui:
@@ -429,6 +433,8 @@ def main():
                 help='Confidence-weighted prediction reward; omitted means inherit checkpoint setting')
             q.add_argument('--near-landing-assist',action=argparse.BooleanOptionalAction,default=None,
                 help='Estimated-state near-field prediction and action constraints; hybrid controller, inherits checkpoint if omitted')
+            q.add_argument('--terminal-finish-assist',action=argparse.BooleanOptionalAction,default=None,
+                help='Bounded last-centimeters completion after a valid alignment decision, plus faster approach limits')
     args=parser.parse_args()
     if args.command=='prepare': prepare(args)
     elif args.command=='benchmark': benchmark(args)

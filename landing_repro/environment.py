@@ -89,6 +89,8 @@ class MovingPlatformLanding(gym.Env):
         c = self.cfg
         if c.near_landing_assist and not c.prediction_guidance:
             raise ValueError('Near landing assist requires the camera estimator / prediction guidance')
+        if c.terminal_finish_enabled and not c.near_landing_assist:
+            raise ValueError('Terminal finish requires near landing assist')
         assert c.physics_hz % c.control_hz == 0 and c.control_hz % c.policy_hz == 0
         self.gui = gui
         self.sim = PlatformAviary(drone_model=DroneModel.CF2X, num_drones=1,
@@ -325,7 +327,10 @@ class MovingPlatformLanding(gym.Env):
         if self.cfg.escape_distance > 0 and dxy > self.cfg.escape_distance and event == "running":
             event = info["event"] = "escaped"
             info["reward"] = -10.
-        if self.cfg.near_landing_assist and guard['active'] and guard['unknown_seconds']>=self.cfg.near_unknown_grace_seconds and event=='running':
+        if guard.get('terminal_timed_out') and event=='running':
+            event=info['event']='terminal_timeout'
+            info['reward']=-5.
+        if self.cfg.near_landing_assist and guard['active'] and not guard.get('terminal_active') and guard['unknown_seconds']>=self.cfg.near_unknown_grace_seconds and event=='running':
             event=info['event']='near_estimate_lost'
             info['reward']=-5.
         prediction_valid=self.cfg.prediction_guidance and self.center_estimate['mode']=='predicted'

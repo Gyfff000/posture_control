@@ -21,13 +21,28 @@ class NearLandingGuard:
         self.active=False; self.blend=0.; self.unknown_seconds=0.
         self.last_output=np.zeros(3); self.last_velocity=np.zeros(3)
         self.last_height=None
+        self.last_plane=None
+        self.terminal_active=False; self.terminal_attempted=False; self.terminal_seconds=0.
+        self.terminal_position=None; self.terminal_velocity=None
+        self.terminal_quality=0.; self.terminal_age=0.
+
+    def terminal_estimate(self):
+        if not self.terminal_active:
+            return None
+        return dict(mode='predicted',position=self.terminal_position.tolist(),
+            velocity=self.terminal_velocity.tolist(),confidence=float(self.terminal_quality*np.exp(-self.terminal_seconds/2.)),
+            age_seconds=self.terminal_age+self.terminal_seconds,near_field=True,
+            estimate_kind='terminal_coast',terminal_seconds=self.terminal_seconds,
+            reason='bounded_terminal_completion',source='Latched terminal estimate + horizontal velocity; max 4s finish controller, not a fresh detection')
 
     def apply(self,requested,state,center,dt,config):
         requested=np.asarray(requested,dtype=float)
-        reliable=center.get('position') is not None
+        reliable=center.get('position') is not None and center.get('estimate_kind')!='terminal_coast'
+        tracker_reliable=reliable
         if reliable:
             height=float(state[2]-center['position'][2])
             self.last_height=height
+            self.last_plane=float(center['position'][2])
             self.last_velocity=np.asarray(center['velocity'],dtype=float).copy()
             self.last_velocity[2]=0.
             if center.get('near_field'):
@@ -38,12 +53,43 @@ class NearLandingGuard:
         self.blend=float(np.clip(self.blend+(dt/.8 if self.active else -dt/.8),0.,1.))
         if not self.active and self.blend<=0.:
             self.last_output=requested.copy()
-            return requested,dict(active=False,blend=0.,unknown_seconds=0.,descent_allowed=True)
+            return requested,dict(active=False,blend=0.,unknown_seconds=0.,descent_allowed=True,
+                terminal_active=False,phase='network',terminal_timed_out=False)
         self.unknown_seconds=0. if reliable else self.unknown_seconds+dt
         height=self.last_height if self.last_height is not None else config.near_enter_height
+        if self.last_plane is not None:
+            height=float(state[2]-self.last_plane)
+        terminal_timed_out=False; terminal_aborted=False
+        tilt=max(abs(v) for v in p.getEulerFromQuaternion(state[3:7])[:2])
+        if config.terminal_finish_enabled:
+            if self.terminal_active:
+                self.terminal_seconds+=dt
+                self.terminal_position+=dt*self.terminal_velocity
+                error=np.linalg.norm(self.terminal_position[:2]-state[:2])
+                relative_speed=np.linalg.norm(np.asarray(state[10:12])-self.terminal_velocity[:2])
+                if self.terminal_seconds>=config.terminal_finish_seconds:
+                    self.terminal_active=False; terminal_timed_out=True
+                elif error>.30 or relative_speed>.35 or tilt>np.deg2rad(20) or state[2]-self.terminal_position[2]>.35 or requested[2]>.15:
+                    self.terminal_active=False; terminal_aborted=True
+            elif self.active and reliable and not self.terminal_attempted:
+                distance=np.linalg.norm(np.asarray(center['position'])[:2]-state[:2])
+                speed=np.linalg.norm(np.asarray(state[10:12])-np.asarray(center['velocity'])[:2])
+                std=max(center.get('position_std_m',[float('inf')]*3)[:2])
+                if (.02<height<=config.terminal_entry_height and distance<=.16 and speed<=.12
+                        and tilt<=np.deg2rad(12) and center.get('confidence',0.)>=.12 and std<=.30
+                        and requested[2]<-.02):
+                    self.terminal_active=True; self.terminal_attempted=True; self.terminal_seconds=dt
+                    self.terminal_velocity=np.asarray(center['velocity'],dtype=float).copy()
+                    self.terminal_velocity[2]=0.
+                    self.terminal_position=np.asarray(center['position'],dtype=float)+dt*self.terminal_velocity
+                    self.terminal_quality=float(center['confidence']); self.terminal_age=float(center['age_seconds'])
+            if self.terminal_active:
+                center=self.terminal_estimate()
+                reliable=True
+                height=float(state[2]-center['position'][2])
         x=float(np.clip((height-.10)/.70,0.,1.))
         correction_limit=.08+.22*x*x*(3.-2.*x)
-        platform_velocity=self.last_velocity[:2]*np.exp(-self.unknown_seconds/1.5)
+        platform_velocity=self.terminal_velocity[:2] if self.terminal_active else self.last_velocity[:2]*np.exp(-self.unknown_seconds/1.5)
         relative_command=bounded_vector(requested[:2]-platform_velocity,correction_limit)
         confidence=float(center.get('confidence',0.))
         if reliable:
@@ -57,8 +103,12 @@ class NearLandingGuard:
         relative_speed=float(np.linalg.norm(np.asarray(state[10:12])-platform_velocity))
         tilt=max(abs(v) for v in p.getEulerFromQuaternion(state[3:7])[:2])
         descent_allowed=bool(reliable and confidence>=.10 and distance<.25 and relative_speed<.18 and tilt<np.deg2rad(15))
-        descent_limit=.08+.04*x
-        target[2]=np.clip(target[2],-descent_limit if descent_allowed else 0.,.10)
+        descent_limit=(.12+.12*x) if config.terminal_finish_enabled else (.08+.04*x)
+        if self.terminal_active:
+            descent_allowed=True
+            target[2]=-config.terminal_finish_speed
+        else:
+            target[2]=np.clip(target[2],-descent_limit if descent_allowed else 0.,.10)
         if not reliable:
             target[:2]=platform_velocity  # Bounded fallback; no new blind position correction.
         desired=(1.-self.blend)*requested+self.blend*target
@@ -70,7 +120,11 @@ class NearLandingGuard:
         self.last_output=output.copy()
         return output,dict(active=self.active,blend=self.blend,unknown_seconds=self.unknown_seconds,
             estimated_height_m=height,relative_correction_limit_m_s=correction_limit,
-            descent_allowed=descent_allowed,relative_speed_m_s=relative_speed)
+            descent_allowed=descent_allowed,relative_speed_m_s=relative_speed,
+            tracker_reliable=tracker_reliable,terminal_active=self.terminal_active,
+            terminal_seconds=self.terminal_seconds,terminal_timed_out=terminal_timed_out,
+            terminal_aborted=terminal_aborted,descent_limit_m_s=config.terminal_finish_speed if self.terminal_active else descent_limit,
+            phase='terminal_finish' if self.terminal_active else 'near_tracking')
 
 
 def near_center_reward(state,center):

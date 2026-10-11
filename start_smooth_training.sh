@@ -25,4 +25,4 @@ out="runs/smooth_near_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$out"
 printf '%s\n' "$out" > runs/current_smooth_training.txt
 printf '%s\n' "$$" > "$out/training.pid"
-exec python -m landing_repro.smooth train --checkpoint "$checkpoint" --data runs/smooth_prepare_seed31/demonstrations.npz --output "$out" --stage 1 --steps 60000 --eval-every 5000 --eval-episodes 20 --seed 41 --prediction-guidance --near-landing-assist "${resume_args[@]}" --gui
+exec python -m landing_repro.smooth train --checkpoint "$checkpoint" --data runs/smooth_prepare_seed31/demonstrations.npz --output "$out" --stage 1 --steps 60000 --eval-every 5000 --eval-episodes 20 --seed 41 --prediction-guidance --near-landing-assist --terminal-finish-assist "${resume_args[@]}" --gui

@@ -98,3 +98,6 @@ python -m landing_repro.resume_smooth
 它核对活动进程、保存中断检查点，再前台重开带预测奖励的桌面训练。没有匹配的活动进程会报错，不随意终止其他进程。不要重复执行；桌面启动脚本也会阻止重复训练。
 
 手动恢复可用 `smooth train` 的 `--checkpoint`、`--step-offset`、`--resume-run` 和 `--prediction-guidance`。省略最后这个开关时继承检查点设置；`--no-prediction-guidance` 可关闭用于后续对照。当前尚无新奖励方法的独立成功率结论，需与关闭版本在相同测试条件下比较。
+# 末段中心保留更新
+
+开启末段辅助后，满足低高度、对准及低相对速度条件，可短时保留预测中心并完成接触；普通估计失效时显示 FINISH COAST，最长 4 秒，置信度继续衰减。详见[末段完成说明](terminal_landing_finish.md)。

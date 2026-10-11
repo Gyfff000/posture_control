@@ -2,6 +2,8 @@
 
 日期：2026-10-11。
 
+后续更新：[第 66 回合中心丢失后的末段完成与下降速度调整](terminal_landing_finish.md)。下文记录原近距离辅助配置；开启新末段选项后，下降上限与最后完成逻辑按该更新执行。
+
 文献来源：**Autonomous Landing on a Moving Platform Using Vision-Based Deep Reinforcement Learning**，Pawel Ladosz 等，IEEE RA-L 2024，DOI：10.1109/LRA.2024.3379837。本页是本仓库进一步加入的近距离辅助控制改进，不是论文原始方法。
 
 ## 当前状态：检查完成，收到指令后已恢复训练

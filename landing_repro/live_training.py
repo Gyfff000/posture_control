@@ -175,7 +175,7 @@ class LiveTraining:
                 f"Critic loss: {loss_text}\n"
                 f"Current result: {info['event'].upper()} | Center: {center['mode'].upper()} | Confidence: {center.get('confidence',0.):.2f}\n"
                 f"Since full detection: {center.get('age_seconds') or 0.:.2f}s | Prediction reward: {info.get('prediction_reward',0.):+.4f} | Guidance: {'ON' if env.cfg.prediction_guidance else 'OFF'}\n"
-                f"Near assist: {'ACTIVE' if info.get('near_guard',{}).get('active') else 'OFF'} | Center reward: {info.get('near_center_reward',0.):+.4f}\n"
+                f"Near phase: {info.get('near_guard',{}).get('phase','OFF')} | Finish: {info.get('near_guard',{}).get('terminal_seconds',0.):.1f}s | Center reward: {info.get('near_center_reward',0.):+.4f}\n"
                 f"Executed action: {' '.join(f'{v:+.2f}' for v in info.get('executed_normalized_action',action))}"))
             self.last_draw = now
         self.pump()
@@ -203,7 +203,7 @@ class LiveTraining:
                 f'Height above deck: {info["relative_position"][2]:.2f} m | Onboard sees pad: {info["visible"]}\n'
                 f'Test return: {episode_return:.2f} | Network action: {action[0]:+.2f} {action[1]:+.2f} {action[2]:+.2f}\n'
                 f'Center: {env._center_tracker.result["mode"]} | C={env._center_tracker.result.get("confidence",0.):.2f} | Prediction reward={info.get("prediction_reward",0.):+.4f}\n'
-                f'Near assist: {info.get("near_guard",{}).get("active",False)} | Executed: {info.get("executed_normalized_action",action.tolist())}\n'
+                f'Near phase: {info.get("near_guard",{}).get("phase","OFF")} | Executed: {info.get("executed_normalized_action",action.tolist())}\n'
                 'Three views show the TEST world. Separate PyBullet window holds the training world.\n'
                 'Training resumes automatically when validation finishes.'))
             self.last_draw = now

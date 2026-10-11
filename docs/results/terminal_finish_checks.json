@@ -1,0 +1,12 @@
+{
+  "terminal_latches_before_expiry": true,
+  "continues_descent_after_tracking_unknown": true,
+  "never_commits_without_valid_alignment": true,
+  "bounded_completion_timeout": true,
+  "no_truth_position_used_by_controller": true,
+  "expired_tracker_still_has_bounded_display_center": true,
+  "physical_contact_required_for_success": true,
+  "synthetic_physics_event": "success",
+  "no_optimizer_or_training_called": true,
+  "status": "passed"
+}

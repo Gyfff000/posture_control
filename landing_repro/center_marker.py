@@ -188,7 +188,13 @@ def estimate_center(env):
             env.cfg.center_confidence_tau,env.cfg.center_min_confidence)
     tracker=env._center_tracker
     state=env.state
-    return tracker.update(env.rgb,state[:3],state[3:7],env.cfg,env.elapsed)
+    result=tracker.update(env.rgb,state[:3],state[3:7],env.cfg,env.elapsed)
+    if env.cfg.terminal_finish_enabled and result['position'] is None and hasattr(env,'near_guard'):
+        terminal=env.near_guard.terminal_estimate()
+        if terminal is not None:
+            terminal['tracker_reason']=result.get('reason')
+            return terminal
+    return result
 
 
 def prediction_progress(before_position,after_position,previous_estimate,current_estimate,dt,weight=4.):
@@ -219,7 +225,7 @@ def update_center_marker(env):
             top=base+[0,0,1.]
             color=[.10,.90,.25] if result['mode']=='observed' else [1.,.55,.0]
             tracker.line_id=p.addUserDebugLine(base,top,color,4,replaceItemUniqueId=tracker.line_id,physicsClientId=env.client)
-            label=('VISION center' if result['mode']=='observed' else ('NEAR PREDICTED' if result.get('near_field') else 'PREDICTED')+f' {result["age_seconds"]:.1f}s')+f' C={result["confidence"]:.2f}'
+            label=('VISION center' if result['mode']=='observed' else ('FINISH COAST' if result.get('estimate_kind')=='terminal_coast' else 'NEAR PREDICTED' if result.get('near_field') else 'PREDICTED')+f' {result["age_seconds"]:.1f}s')+f' C={result["confidence"]:.2f}'
             tracker.text_id=p.addUserDebugText(label,top,textColorRGB=color,textSize=1.1,
                 replaceItemUniqueId=tracker.text_id,physicsClientId=env.client)
     return result
@@ -247,7 +253,7 @@ def overlay(image,result,view,projection):
     draw=ImageDraw.Draw(image)
     mode=result['mode']
     color=(20,220,70) if mode=='observed' else (255,145,0)
-    label='VISION estimate' if mode=='observed' else ('NEAR PRED' if result.get('near_field') else 'PREDICTED')+f' {result["age_seconds"]:.1f}s' if mode=='predicted' else 'CENTER UNKNOWN'
+    label='VISION estimate' if mode=='observed' else ('FINISH COAST' if result.get('estimate_kind')=='terminal_coast' else 'NEAR PRED' if result.get('near_field') else 'PREDICTED')+f' {result["age_seconds"]:.1f}s' if mode=='predicted' else 'CENTER UNKNOWN'
     if mode!='unknown':
         label+=f' C={result["confidence"]:.2f}'
     if result['position'] is not None:
