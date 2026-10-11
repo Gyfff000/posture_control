@@ -83,6 +83,20 @@ bash start_variable_motion_training.sh runs/smooth_near_20261011_143540/interrup
 
 该脚本立即启动后续训练，不会在后台等待当前任务结束。活动目录仍写入 `runs/current_smooth_training.txt`。桌面状态显示运动阶段和平台实时速度，CSV 增加平台速度和朝向，便于事后分析。
 
+### 桌面窗口恢复（2026-10-11）
+
+用户反馈桌面未正常显示时，日志确认训练仍在继续，WSLg 中训练和 PyBullet 窗口均已创建，不能据此确认 Windows 前台是否可见。Windows computer-use 工具两次因沙箱路径编码错误无法初始化，未使用其截图或输入。
+
+已在 43798 步保存检查点，再从阶段 1 恢复到 `runs/motion_curriculum_20261011_164731`。训练窗口启动时自行恢复、置前并短暂置顶；标题改为 `UAV LANDING TRAINING | Motion 1 | variable-speed straight`。已确认程序收到窗口恢复请求且参数更新继续增长。
+
+桌面新增 `显示当前无人机训练窗口.cmd`。双击只请求现有窗口恢复显示，不会启动第二个训练进程，也不会重置模型。相同入口可在 WSL 使用：
+
+```bash
+python -m landing_repro.show_training_window
+```
+
+若训练进程已退出，该入口报错而不自动重启。界面有三个实时视图；窗口是否在 Windows 当前桌面可见仍需用户确认。
+
 手动复查（不训练）：
 
 ```bash

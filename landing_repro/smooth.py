@@ -286,6 +286,8 @@ def train(args):
         from .live_training import LiveTraining
         panel = LiveTraining(out)
         panel.root.title('SMOOTH VISUAL LANDING TRAINING | new model | not pure paper DrQ')
+        if args.motion_curriculum:
+            panel.root.title(f'UAV LANDING TRAINING | Motion {motion_phase} | {PHASE_NAMES[motion_phase]}')
         panel.heading.configure(text='SMOOTH VISUAL LANDING - LEARNING IN PROGRESS')
         panel.focus = 'overview'
         panel.training_total = args.steps
@@ -416,6 +418,8 @@ def train(args):
                         flight=FlightLog(env); ret=0.; trail_position=env.state[:3]
                         write_config(); save('latest.pt')
                         print('MOTION CURRICULUM PROMOTED',motion_phase,PHASE_NAMES[motion_phase],flush=True)
+                        if panel:
+                            panel.root.title(f'UAV LANDING TRAINING | Motion {motion_phase} | {PHASE_NAMES[motion_phase]}')
                     elif not args.motion_curriculum and stable>=3:
                         recent=[v['successes']/v['episodes'] for v in validations[-3:]]
                         if max(recent)-min(recent)<=.0500001:

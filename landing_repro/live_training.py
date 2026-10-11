@@ -58,7 +58,20 @@ class LiveTraining:
         self.log = scrolledtext.ScrolledText(self.root, height=6, width=100, state="disabled")
         self.log.pack(fill="both", expand=True, padx=8, pady=5)
         tk.Label(self.root, text="Model and logs: " + str(output), wraplength=1000).pack()
+        self.root.after(250,self.show_window)
         self.pump()
+
+    def show_window(self):
+        """Ask our own Tk/WSLg window to restore and raise, without restarting learning."""
+        try:
+            self.root.deiconify()
+            self.root.geometry('+20+20')
+            self.root.lift()
+            self.root.attributes('-topmost',True)
+            self.root.focus_force()
+            self.root.after(2000,lambda:self.root.attributes('-topmost',False))
+        except tk.TclError:
+            self.stop=True
 
     def toggle_pause(self):
         self.paused = not self.paused
@@ -111,6 +124,10 @@ class LiveTraining:
 
     def pump(self):
         try:
+            request=self.output/'show_window.request'
+            if request.exists():
+                request.unlink()
+                self.show_window()
             self.root.update_idletasks()
             self.root.update()
         except tk.TclError:
