@@ -13,7 +13,7 @@ from PIL import Image
 
 
 class LinuxWindowCapture:
-    def __init__(self):
+    def __init__(self, view='training'):
         self.x = x = c.CDLL(ctypes.util.find_library('X11'))
         d, w = c.c_void_p, c.c_ulong
         x.XOpenDisplay.argtypes = [c.c_char_p]
@@ -47,7 +47,8 @@ class LinuxWindowCapture:
             if x.XFetchName(self.d, window, c.byref(name)) and name.value:
                 try:
                     title = c.string_at(name).decode(errors='replace')
-                    if title.startswith(('UAV LANDING TRAINING', 'LIVE DrQ-v2 TRAINING', 'ASSISTED VISUAL')):
+                    prefixes = ('Bullet Physics ExampleBrowser',) if view == 'physics' else ('UAV LANDING TRAINING', 'LIVE DrQ-v2 TRAINING', 'ASSISTED VISUAL')
+                    if title.startswith(prefixes):
                         matches.append(window)
                 finally:
                     x.XFree(name)
@@ -99,6 +100,7 @@ PAGE = '''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=8765)
+    parser.add_argument('--view', choices=['training', 'physics'], default='training')
     parser.add_argument('--capture-once')
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
@@ -115,7 +117,7 @@ def main():
 
     if not alive():
         raise RuntimeError('The current trainer is not running')
-    capture = LinuxWindowCapture()
+    capture = LinuxWindowCapture(args.view)
     if args.capture_once:
         capture.capture().save(args.capture_once)
         print('Saved actual training window:', args.capture_once)
@@ -159,15 +161,25 @@ def main():
                 return
             if self.path == '/frame.jpg':
                 body, kind = shared['jpeg'], 'image/jpeg'
+            elif self.path == '/frame.png':
+                if not shared['jpeg']:
+                    self.send_error(503, 'Waiting for first frame')
+                    return
+                buffer = io.BytesIO()
+                Image.open(io.BytesIO(shared['jpeg'])).save(buffer, format='PNG')
+                body, kind = buffer.getvalue(), 'image/png'
             elif self.path == '/status':
                 try:
                     status = json.loads((run / 'live_status.json').read_text())
                 except (OSError, ValueError):
                     status = {}
-                status.update(run=relative, trainer_alive=alive(), frame_time=shared['frame_time'], error=shared['error'])
+                status.update(run=relative, trainer_alive=alive(), frame_time=shared['frame_time'], error=shared['error'], view=args.view)
                 body, kind = json.dumps(status).encode(), 'application/json'
             elif self.path == '/':
-                body, kind = PAGE.encode(), 'text/html; charset=utf-8'
+                page = PAGE
+                if args.view == 'physics':
+                    page = page.replace('无人机实时训练画面', '无人机三维仿真实时画面').replace('无人机移动平台降落 · 正在运行的训练界面', '无人机移动平台降落 · 当前三维仿真窗口')
+                body, kind = page.encode(), 'text/html; charset=utf-8'
             else:
                 self.send_error(404)
                 return
