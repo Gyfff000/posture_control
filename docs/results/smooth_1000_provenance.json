@@ -1,0 +1,6 @@
+{
+  "source": "runs/smooth_long_20261011_124808/latest.pt",
+  "saved_snapshot": "runs/smooth_milestone_comparison/snapshot.pt",
+  "training_steps": 1000,
+  "note": "Development checkpoint check; seeds already used in initial comparison"
+}

@@ -1,0 +1,9 @@
+{
+  "transfer_preserves_initial_actions": true,
+  "own_command_memory_and_command_jerk_bounds": true,
+  "episode_memory_reset": true,
+  "finite_real_smooth_gradient_update": true,
+  "smooth_checkpoint_reload_exact": true,
+  "no_teacher_no_learning_in_evaluation": true,
+  "original_configuration_compatible": true
+}

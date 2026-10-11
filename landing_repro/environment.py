@@ -98,7 +98,7 @@ class MovingPlatformLanding(gym.Env):
         self.action_space = gym.spaces.Box(-1., 1., (3,), dtype=np.float32)
         self.observation_space = gym.spaces.Dict({
             "pixels": gym.spaces.Box(0, 255, (3, 84, 84), dtype=np.uint8),
-            "proprio": gym.spaces.Box(-np.inf, np.inf, (21,), dtype=np.float32)})
+            "proprio": gym.spaces.Box(-np.inf, np.inf, (30 if c.smooth_observation else 21,), dtype=np.float32)})
         self.frames, self.proprio_frames = deque(maxlen=3), deque(maxlen=3)
         self.closed = False
         self.finished = True
@@ -141,6 +141,8 @@ class MovingPlatformLanding(gym.Env):
         self.steps, self.elapsed, self.finished = 0, 0.0, False
         self.invisible_seconds = 0.
         self.applied_velocity = np.zeros(3)
+        self.previous_command = np.zeros(3, np.float32)
+        self.command_acceleration = np.zeros(3)
         self.frames.clear()
         self.proprio_frames.clear()
         self._observe()
@@ -183,7 +185,12 @@ class MovingPlatformLanding(gym.Env):
         self.proprio_frames.append(own_state)
 
     def _observation(self):
-        return {"pixels": np.stack(self.frames), "proprio": np.concatenate(self.proprio_frames)}
+        own = np.concatenate(self.proprio_frames)
+        if self.cfg.smooth_observation:
+            limits = np.array([self.cfg.acceleration_limit_xy]*2 + [self.cfg.acceleration_limit_z])
+            own = np.r_[own, self.previous_command, self.applied_velocity/LIMITS,
+                        self.command_acceleration/limits].astype(np.float32)
+        return {"pixels": np.stack(self.frames), "proprio": own}
 
     def fully_inside(self):
         pos = self.platform_position
@@ -225,6 +232,7 @@ class MovingPlatformLanding(gym.Env):
         if action.shape != (3,) or not np.isfinite(action).all():
             raise ValueError("Expected three finite normalized velocity commands")
         command = np.clip(action, -1, 1) * LIMITS
+        action_change = float(np.mean((np.clip(action, -1, 1) - self.previous_command)**2))
         before_relative = self.state[:3] - (self.platform_position + np.array([0., 0., .04]))
         event = "running"
         pre_contact_velocity = None
@@ -232,9 +240,18 @@ class MovingPlatformLanding(gym.Env):
             state = self.state
             acceleration = np.array([self.cfg.acceleration_limit_xy, self.cfg.acceleration_limit_xy,
                                      self.cfg.acceleration_limit_z])
-            self.applied_velocity += np.clip(command - self.applied_velocity,
-                                              -acceleration * self.sim.CTRL_TIMESTEP,
-                                              acceleration * self.sim.CTRL_TIMESTEP)
+            if self.cfg.jerk_limit_xy > 0 and self.cfg.jerk_limit_z > 0:
+                dt = self.sim.CTRL_TIMESTEP
+                desired = np.clip((command-self.applied_velocity)/self.cfg.velocity_response_seconds,
+                                  -acceleration, acceleration)
+                jerk = np.array([self.cfg.jerk_limit_xy]*2 + [self.cfg.jerk_limit_z])
+                self.command_acceleration += np.clip(desired-self.command_acceleration, -jerk*dt, jerk*dt)
+                self.applied_velocity += self.command_acceleration*dt
+            else:
+                delta = np.clip(command-self.applied_velocity,
+                                -acceleration*self.sim.CTRL_TIMESTEP, acceleration*self.sim.CTRL_TIMESTEP)
+                self.applied_velocity += delta
+                self.command_acceleration = delta/self.sim.CTRL_TIMESTEP
             rpm, _, _ = self.controller.computeControl(
                 control_timestep=self.sim.CTRL_TIMESTEP, cur_pos=state[:3], cur_quat=state[3:7],
                 cur_vel=state[10:13], cur_ang_vel=state[13:16], target_pos=state[:3],
@@ -251,6 +268,8 @@ class MovingPlatformLanding(gym.Env):
         self.invisible_seconds = 0. if self.visible else self.invisible_seconds + 1./self.cfg.policy_hz
         info["applied_velocity"] = self.applied_velocity.tolist()
         info["pre_contact_relative_velocity"] = (None if pre_contact_velocity is None else pre_contact_velocity.tolist())
+        info['command_acceleration'] = self.command_acceleration.tolist()
+        info['action_change_squared'] = action_change
         dxy = float(np.linalg.norm(info["relative_position"][:2]))
         info.update(reward_terms(dxy, self.state[12], command[2], self.visible, event, self.cfg))
         if self.cfg.reward_mode == "guided_progress":
@@ -278,6 +297,22 @@ class MovingPlatformLanding(gym.Env):
             info["event"] = "timeout"
             if self.cfg.reward_mode == "guided_progress":
                 info["reward"] = -2.
+        smooth_penalty = self.cfg.action_smooth_weight * action_change
+        soft_penalty = 0.
+        relative = np.asarray(info['relative_velocity'])
+        if self.cfg.soft_landing_weight > 0 and 0 < info['relative_position'][2] < .6 and event == 'running':
+            soft_penalty = self.cfg.soft_landing_weight * (
+                np.sum(relative[:2]**2) + 2.*max(0., -relative[2]-.15)**2)
+        contact = pre_contact_velocity
+        info['soft_landing'] = bool(info['success'] and contact is not None
+            and np.linalg.norm(contact[:2]) <= .2 and abs(contact[2]) <= .18
+            and np.max(np.abs(self.state[7:9])) <= np.deg2rad(10))
+        if info['success'] and self.cfg.soft_landing_weight > 0:
+            # Preserve geometric success; separately reward the quality of first contact.
+            soft_penalty += 2.*(np.linalg.norm(contact[:2])**2 + max(0., abs(contact[2])-.15)**2)
+        info['smooth_penalty'], info['soft_penalty'] = smooth_penalty, soft_penalty
+        info['reward'] -= smooth_penalty + soft_penalty
+        self.previous_command = np.clip(action, -1, 1).copy()
         self.finished = terminated or truncated
         return self._observation(), info["reward"], terminated, truncated, info
 

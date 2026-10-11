@@ -191,7 +191,7 @@ class LiveTraining:
                 f'Height above deck: {info["relative_position"][2]:.2f} m | Onboard sees pad: {info["visible"]}\n'
                 f'Test return: {episode_return:.2f} | Network action: {action[0]:+.2f} {action[1]:+.2f} {action[2]:+.2f}\n'
                 'Three views show the TEST world. Separate PyBullet window holds the training world.\n'
-                'Training resumes automatically after all three groups (15 test flights).'))
+                'Training resumes automatically when validation finishes.'))
             self.last_draw = now
         if finished or now - self.last_status >= 1.:
             status = dict(pid=os.getpid(), state='validating', mode='validation',

@@ -43,3 +43,5 @@ SOFTWARE.
 运行时使用 learnsyslab/gym-pybullet-drones（MIT），固定提交
 50d1a958def27121bcf63f3cc753049fee8e71e5。该依赖单独安装，没有把其模型和源码复制到此目录。
 https://github.com/learnsyslab/gym-pybullet-drones
+
+2026-10-11: smooth.py adds own-command memory (30D proprioception), command-smoothness penalties, command-jerk limits and soft-contact shaping. This is a new demonstration-assisted adaptation, not the original paper method or a full CAPS implementation. Privileged platform truth is used only for training labels/rewards and evaluation metrics; evaluated actions use pixels and own state/command memory.

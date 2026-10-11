@@ -29,6 +29,12 @@ class EnvConfig:
     escape_distance: float = 0.0
     lost_view_seconds: float = 0.0
     teacher_descent_fast: float = .35
+    smooth_observation: bool = False
+    action_smooth_weight: float = 0.0
+    soft_landing_weight: float = 0.0
+    jerk_limit_xy: float = 0.0
+    jerk_limit_z: float = 0.0
+    velocity_response_seconds: float = .10
 
     def to_dict(self):
         return asdict(self)
@@ -36,6 +42,7 @@ class EnvConfig:
 
 @dataclass
 class AgentConfig:
+    proprio_dim: int = 21
     seed: int = 1
     learning_rate: float = 0.0001
     tau: float = 0.0012

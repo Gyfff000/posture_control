@@ -45,11 +45,11 @@ def teacher_action(env):
 
 
 class Demonstrations:
-    def __init__(self, capacity=12000, seed=1):
+    def __init__(self, capacity=12000, seed=1, proprio_dim=21):
         self.capacity, self.size, self.index = capacity, 0, 0
         self.rng = np.random.default_rng(seed)
         self.pixels = np.empty((capacity, 3, 84, 84), np.uint8)
-        self.proprio = np.empty((capacity, 21), np.float32)
+        self.proprio = np.empty((capacity, proprio_dim), np.float32)
         self.actions = np.empty((capacity, 3), np.float32)
 
     def add(self, obs, action):
@@ -69,7 +69,7 @@ class Demonstrations:
     @classmethod
     def load(cls, path, seed=1):
         data = np.load(path)
-        obj = cls(max(12000, len(data['action'])), seed)
+        obj = cls(max(12000, len(data['action'])), seed, data['proprio'].shape[1])
         obj.size = len(data['action'])
         obj.pixels[:obj.size], obj.proprio[:obj.size], obj.actions[:obj.size] = data['pixels'], data['proprio'], data['action']
         obj.index = obj.size % obj.capacity

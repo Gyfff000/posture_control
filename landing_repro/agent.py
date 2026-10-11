@@ -48,7 +48,7 @@ def head(size, hidden, output):
 class Actor(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.trunk = trunk(Encoder.output_dim + 21, cfg.feature_dim)
+        self.trunk = trunk(Encoder.output_dim + cfg.proprio_dim, cfg.feature_dim)
         self.policy = head(cfg.feature_dim, cfg.hidden_dim, 3)
         self.apply(initialize)
 
@@ -59,7 +59,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.trunk = trunk(Encoder.output_dim + 21, cfg.feature_dim)
+        self.trunk = trunk(Encoder.output_dim + cfg.proprio_dim, cfg.feature_dim)
         self.q1 = head(cfg.feature_dim + 3, cfg.hidden_dim, 1)
         self.q2 = head(cfg.feature_dim + 3, cfg.hidden_dim, 1)
         self.apply(initialize)
@@ -110,7 +110,7 @@ class DrQV2:
         action = mean if evaluation else self.sample(mean, self.stddev(step))
         return action[0].numpy()
 
-    def update(self, batch, step, expert=None, bc_weight=0., rl_weight=1., gradient_clip=0.):
+    def update(self, batch, step, expert=None, bc_weight=0., rl_weight=1., gradient_clip=0., smooth_weight=0.):
         b = {key: torch.as_tensor(value) for key, value in batch.items()}
         feat = torch.cat([self.encoder(self.augment(b["pixels"])), b["proprio"]], dim=-1)
         with torch.no_grad():
@@ -135,6 +135,12 @@ class DrQV2:
         sampled = self.sample(self.actor(feat.detach()), self.stddev(step), self.cfg.noise_clip)
         aq1, aq2 = self.critic(feat.detach(), sampled)
         actor_loss = -rl_weight * torch.minimum(aq1, aq2).mean()
+        smooth_loss = torch.tensor(0.)
+        if smooth_weight:
+            if self.cfg.proprio_dim != 30:
+                raise ValueError('Smooth policy requires previous command in 30D own state')
+            smooth_loss = F.mse_loss(self.actor(feat.detach()), b['proprio'][:, 21:24])
+            actor_loss = actor_loss + smooth_weight * smooth_loss
         imitation_loss = torch.tensor(0.)
         if expert is not None and bc_weight:
             with torch.no_grad():
@@ -157,7 +163,7 @@ class DrQV2:
         return {"critic_loss": float(critic_loss.detach()), "actor_loss": float(actor_loss.detach()),
                 "batch_reward": float(b["reward"].mean()), "encoder_grad_norm": encoder_grad,
                 "target_q_mean": float(target.mean()), "updates": self.updates,
-                "imitation_loss": float(imitation_loss.detach())}
+                "imitation_loss": float(imitation_loss.detach()), "smooth_loss": float(smooth_loss.detach())}
 
     def save(self, path, env_config, steps, training_metadata=None):
         path = Path(path)

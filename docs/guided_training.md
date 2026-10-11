@@ -2,6 +2,8 @@
 
 日期：2026-10-10。
 
+**2026-10-11 状态更新：** 旧第一轮已完成 60000 步，原始任务最终验证仍为 0/5；旧第二轮保存了 6000 步检查点后，按用户要求切换到[平滑轨迹与软着陆实验](smooth_landing.md)。下文“两轮长训练正在进行”的记录属于此前状态，新实验的代码、对比与进度见该链接。原第一轮 60000 步内累计 38/83 次训练接触成功，不能当作最终独立测试成功率。
+
 目标文献：**Autonomous Landing on a Moving Platform Using Vision-Based Deep Reinforcement Learning**，Pawel Ladosz 等，IEEE RA-L 2024，DOI：10.1109/LRA.2024.3379837。
 
 ## 1. 本次修改解决什么
