@@ -71,10 +71,12 @@ class PlatformAviary(CtrlAviary):
     def _physics(self, rpm, nth_drone):
         if self.platform_id is not None and nth_drone == 0:
             t = self.platform_tick * self.PYB_TIMESTEP
-            pos = self.platform_origin + self.platform_velocity * t
+            pos,velocity,yaw,yaw_rate=self.platform_motion.sample(t)
+            self.platform_velocity=velocity
+            self.platform_quat=p.getQuaternionFromEuler([0,0,yaw])
             p.resetBasePositionAndOrientation(self.platform_id, pos, self.platform_quat,
                                               physicsClientId=self.CLIENT)
-            p.resetBaseVelocity(self.platform_id, self.platform_velocity, [0, 0, 0],
+            p.resetBaseVelocity(self.platform_id, velocity, [0, 0, yaw_rate],
                                 physicsClientId=self.CLIENT)
             self.platform_tick += 1
         super()._physics(rpm, nth_drone)
@@ -126,10 +128,10 @@ class MovingPlatformLanding(gym.Env):
         collision = p.createCollisionShape(p.GEOM_BOX, halfExtents=[.5, .5, .04], physicsClientId=self.client)
         visual = p.createVisualShape(p.GEOM_MESH, fileName=str(mesh), rgbaColor=[1, 1, 1, 1],
                                      flags=p.VISUAL_SHAPE_DOUBLE_SIDED, physicsClientId=self.client)
-        self.platform_yaw = yaw
         self.platform_quat = p.getQuaternionFromEuler([0, 0, yaw])
         self.platform_origin = np.array([0., 0., c.platform_top - .04])
-        self.platform_velocity = np.array([speed * np.cos(yaw), speed * np.sin(yaw), 0.])
+        from .platform_motion import PlatformMotion
+        motion=PlatformMotion(c,self.np_random,self.platform_origin,speed,yaw)
         self.platform_id = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=collision,
                                             baseVisualShapeIndex=visual, basePosition=self.platform_origin,
                                             baseOrientation=self.platform_quat, physicsClientId=self.client)
@@ -137,9 +139,12 @@ class MovingPlatformLanding(gym.Env):
         p.changeVisualShape(self.platform_id, -1, textureUniqueId=tid, physicsClientId=self.client)
         p.changeDynamics(self.platform_id, -1, lateralFriction=0.8, restitution=0,
                          physicsClientId=self.client)
+        p.resetBaseVelocity(self.platform_id,motion.initial_velocity,[0,0,motion.sample(0.)[3]],
+                            physicsClientId=self.client)
         self.sim.platform_id = self.platform_id
         self.sim.platform_origin = self.platform_origin
-        self.sim.platform_velocity = self.platform_velocity
+        self.sim.platform_motion=motion
+        self.sim.platform_velocity=motion.initial_velocity.copy()
         self.sim.platform_quat = self.platform_quat
         self.sim.platform_tick = 0
         self.steps, self.elapsed, self.finished = 0, 0.0, False
@@ -165,6 +170,15 @@ class MovingPlatformLanding(gym.Env):
     @property
     def state(self):
         return self.sim._getDroneStateVector(0).copy()
+
+    @property
+    def platform_velocity(self):
+        return np.asarray(p.getBaseVelocity(self.platform_id,physicsClientId=self.client)[0])
+
+    @property
+    def platform_yaw(self):
+        quat=p.getBasePositionAndOrientation(self.platform_id,physicsClientId=self.client)[1]
+        return p.getEulerFromQuaternion(quat)[2]
 
     @property
     def platform_position(self):
@@ -233,6 +247,7 @@ class MovingPlatformLanding(gym.Env):
                 "visible": self.visible, "visible_pixels": self.visible_count,
                 "position": state[:3].tolist(), "platform_position": self.platform_position.tolist(),
                 "platform_velocity": self.platform_velocity.tolist(), "relative_position": rel.tolist(),
+                "platform_motion": self.cfg.platform_motion, "platform_yaw": self.platform_yaw,
                 "relative_velocity": (state[10:13] - self.platform_velocity).tolist(),
                 "rpy": state[7:10].tolist(), "command_velocity": command.tolist()}
 

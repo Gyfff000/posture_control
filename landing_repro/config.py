@@ -13,6 +13,10 @@ class EnvConfig:
     platform_speed_min: float = 0.0
     platform_speed_max: float = 1.0
     platform_yaw_degrees: float = 0.0
+    platform_motion: str = 'constant'
+    platform_accel_max: float = .15
+    platform_turn_rate_degrees: float = 10.0
+    platform_speed_noise: float = .30
     platform_top: float = 0.3
     camera_fov: float = 90.0
     camera_offset_x: float = 0.045

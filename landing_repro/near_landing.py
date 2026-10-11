@@ -25,6 +25,7 @@ class NearLandingGuard:
         self.terminal_active=False; self.terminal_attempted=False; self.terminal_seconds=0.
         self.terminal_position=None; self.terminal_velocity=None
         self.terminal_quality=0.; self.terminal_age=0.
+        self.terminal_duration=0.
 
     def terminal_estimate(self):
         if not self.terminal_active:
@@ -33,7 +34,7 @@ class NearLandingGuard:
             velocity=self.terminal_velocity.tolist(),confidence=float(self.terminal_quality*np.exp(-self.terminal_seconds/2.)),
             age_seconds=self.terminal_age+self.terminal_seconds,near_field=True,
             estimate_kind='terminal_coast',terminal_seconds=self.terminal_seconds,
-            reason='bounded_terminal_completion',source='Latched terminal estimate + horizontal velocity; max 4s finish controller, not a fresh detection')
+            reason='bounded_terminal_completion',source=f'Latched terminal estimate + horizontal velocity; max {self.terminal_duration:g}s finish controller, not a fresh detection')
 
     def apply(self,requested,state,center,dt,config):
         requested=np.asarray(requested,dtype=float)
@@ -79,6 +80,7 @@ class NearLandingGuard:
                         and tilt<=np.deg2rad(12) and center.get('confidence',0.)>=.12 and std<=.30
                         and requested[2]<-.02):
                     self.terminal_active=True; self.terminal_attempted=True; self.terminal_seconds=dt
+                    self.terminal_duration=config.terminal_finish_seconds
                     self.terminal_velocity=np.asarray(center['velocity'],dtype=float).copy()
                     self.terminal_velocity[2]=0.
                     self.terminal_position=np.asarray(center['position'],dtype=float)+dt*self.terminal_velocity

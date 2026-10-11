@@ -19,6 +19,7 @@ from .agent import DrQV2, Replay
 from .config import AgentConfig
 from .environment import LIMITS, MovingPlatformLanding
 from .guided import Demonstrations, clone_step, stage_config
+from .motion_curriculum import PHASE_NAMES, motion_config, promotion_ready
 
 METHOD = 'Assisted visual DrQ-v2 + command memory + smoothness losses + bounded command jerk + soft-contact shaping'
 
@@ -76,7 +77,8 @@ class FlightLog:
               'command_ax','command_ay','command_az','center_x','center_y','center_z',
               'center_confidence','center_age_seconds','prediction_reward','center_mode_id','platform_pixels_visible',
               'executed_action_x','executed_action_y','executed_action_z','near_active','near_blend',
-              'near_center_reward','near_descent_allowed','terminal_active','terminal_seconds']
+              'near_center_reward','near_descent_allowed','terminal_active','terminal_seconds',
+              'platform_vx','platform_vy','platform_yaw']
 
     def __init__(self, env):
         self.rows = []
@@ -94,7 +96,8 @@ class FlightLog:
             *info.get('executed_normalized_action',action),int(info.get('near_guard',{}).get('active',False)),
             info.get('near_guard',{}).get('blend',0.),info.get('near_center_reward',0.),
             int(info.get('near_guard',{}).get('descent_allowed',True)),
-            int(info.get('near_guard',{}).get('terminal_active',False)),info.get('near_guard',{}).get('terminal_seconds',0.)])
+            int(info.get('near_guard',{}).get('terminal_active',False)),info.get('near_guard',{}).get('terminal_seconds',0.),
+            *env.platform_velocity[:2],env.platform_yaw])
 
     def save(self, path):
         with Path(path).open('w', newline='') as f:
@@ -258,11 +261,25 @@ def train(args):
     agent.cfg.noise_start,agent.cfg.noise_end,agent.cfg.noise_decay_steps = .03,.005,20000
     torch.manual_seed(args.seed)
     source_config=source.get('env_config',{})
+    source_training=source.get('training_metadata') or {}
+    motion_phase=(source_training.get('motion_phase',0) if args.motion_phase is None else args.motion_phase)
+    if not args.motion_curriculum and args.motion_phase is not None:
+        raise ValueError('--motion-phase requires --motion-curriculum')
+    if args.motion_curriculum and args.stage!=1:
+        raise ValueError('Motion curriculum sets height stages itself; omit --stage')
     prediction_enabled=source_config.get('prediction_guidance',False) if args.prediction_guidance is None else args.prediction_guidance
     near_enabled=source_config.get('near_landing_assist',False) if args.near_landing_assist is None else args.near_landing_assist
     terminal_enabled=source_config.get('terminal_finish_enabled',False) if args.terminal_finish_assist is None else args.terminal_finish_assist
     config = smooth_config(args.stage,prediction_enabled,near_enabled,terminal_enabled)
+    def phase_config(phase):
+        return motion_config(smooth_config,phase,prediction_enabled,near_enabled,terminal_enabled)
+    if args.motion_curriculum:
+        config=phase_config(motion_phase)
     task_changed=any(bool(source_config.get(key,False))!=getattr(config,key) for key in ('prediction_guidance','near_landing_assist','terminal_finish_enabled'))
+    task_changed=task_changed or any(source_config.get(key,getattr(config,key))!=getattr(config,key)
+        for key in ('platform_motion','platform_speed_min','platform_speed_max','platform_accel_max',
+                    'platform_turn_rate_degrees','platform_speed_noise','initial_height','offset_xy','offset_z'))
+    task_changed=task_changed or bool(source_training.get('motion_curriculum',False))!=args.motion_curriculum
     env = MovingPlatformLanding(config,gui=args.gui)
     panel = None
     if args.gui:
@@ -276,7 +293,6 @@ def train(args):
     prior_rows=[]
     if args.resume_run and (args.resume_run/'episodes.jsonl').exists():
         prior_rows=[json.loads(line) for line in (args.resume_run/'episodes.jsonl').read_text().splitlines() if line.strip()]
-    source_training=source.get('training_metadata') or {}
     prior_episode=max(source_training.get('episode',0),max([r['episode'] for r in prior_rows],default=0)) if args.resume_run else 0
     seed_shift=1 if args.resume_run else 0  # Reset a partial flight; do not claim exact state resume.
     obs,_ = env.reset(seed=args.seed*10000+prior_episode+seed_shift)
@@ -295,7 +311,8 @@ def train(args):
     if args.resume_run and not task_changed:
         if (args.resume_run/'validations.json').exists():
             validations=json.loads((args.resume_run/'validations.json').read_text())
-            ranked=[(v['successes'],v['soft_landings'],-v['jerk_rms_m_s3_mean']) for v in validations if v['episodes']==args.eval_episodes]
+            ranked=[(v['successes'],v['soft_landings'],-v['jerk_rms_m_s3_mean']) for v in validations
+                    if v['episodes']==args.eval_episodes and (not args.motion_curriculum or v.get('motion_phase',0)==motion_phase)]
             if ranked:
                 best=max(ranked)
         if (args.resume_run/'best.pt').exists():
@@ -303,13 +320,16 @@ def train(args):
     elif args.resume_run and (args.resume_run/'best.pt').exists():
         shutil.copy2(args.resume_run/'best.pt',out/'previous_task_best.pt')
     reason = 'budget_reached'
-    (out/'config.json').write_text(json.dumps(dict(method=METHOD,arguments={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
-        environment=config.to_dict(),source_checkpoint=str(args.checkpoint),
-        stop_rule='3 consecutive fixed-stage 20-episode validations: success >=80%, soft >=60%, success-rate range <=5 percentage points',
-        task_changed=task_changed,
-        note='Operational stopping rule, not proof of convergence; teacher labels train only. Changed reward tasks reset validation ranking; old best is a separate baseline.'),indent=2))
+    def write_config():
+        (out/'config.json').write_text(json.dumps(dict(method=METHOD,arguments={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
+            environment=config.to_dict(),source_checkpoint=str(args.checkpoint),motion_phase=motion_phase,
+            stop_rule='3 consecutive 20-episode validations: success >=80%, soft >=60%, success-rate range <=5 percentage points; motion curriculum promotes until final phase',
+            task_changed=task_changed,
+            note='Operational stopping rule, not proof of convergence; teacher labels train only. Changed reward tasks reset validation ranking; old best is a separate baseline.'),indent=2))
+    write_config()
     def save(name):
-        agent.save(out/name,config,completed,dict(method=METHOD,stage=args.stage,
+        agent.save(out/name,config,completed,dict(method=METHOD,stage=2 if args.motion_curriculum and motion_phase==3 else args.stage,
+            motion_curriculum=args.motion_curriculum,motion_phase=motion_phase,
             source_checkpoint=str(args.checkpoint),source_metadata=source.get('training_metadata'),
             stable_validations=stable,episode=episode,training_successes=successes,
             soft_landings=softs,exact_resume=False))
@@ -344,18 +364,23 @@ def train(args):
                     metric_log.write(json.dumps(dict(step=completed,**metrics))+'\n')
                 if panel:
                     panel.training_step=completed
-                    panel.training_label=f'SMOOTH MODEL TRAINING | Stage {args.stage} | Soft landings {softs}'
+                    level=(f'Motion {motion_phase}: {PHASE_NAMES[motion_phase]}' if args.motion_curriculum else f'Stage {args.stage}')
+                    panel.training_label=f'SMOOTH MODEL TRAINING | {level} | Soft landings {softs}'
                     panel.saved_result.configure(text='30D own state + camera; smoothness losses + command jerk limits + soft-contact target.\n'+('NEAR ASSIST: extended estimate + constrained network commands; hybrid policy/controller.' if config.near_landing_assist else 'Blue = flown path; GREEN/ORANGE = auxiliary estimate/prediction. '+('Confidence-weighted prediction reward ON; estimate is not a policy input.' if config.prediction_guidance else 'Marker display only.')))
                     panel.update(env,completed,args.steps,0,agent.updates,episode,successes,
                         replay.size,ret,action,info,metrics,time.monotonic()-start,force=term or trunc)
                 if term or trunc:
                     episode+=1; successes+=int(info['success']); softs+=int(info['soft_landing'])
-                    row=dict(episode=episode,step=completed,**flight.summary(info))
+                    row=dict(episode=episode,step=completed,motion_phase=motion_phase,
+                             training_motion_phase=motion_phase-1 if args.motion_curriculum and env.cfg is not config else motion_phase,
+                             platform_motion=env.cfg.platform_motion,**flight.summary(info))
                     flight.save(out/f'train_episode_{episode:04d}.csv')
                     log.write(json.dumps(row)+'\n'); log.flush()
                     print('SMOOTH NETWORK TRAIN',row,flush=True)
                     if panel:
                         panel.episode_result(episode,info,ret); panel.hold_result(.4)
+                    # One in five flights revisits the previous phase to reduce forgetting.
+                    env.cfg=phase_config(motion_phase-1) if args.motion_curriculum and motion_phase>0 and episode%5==0 else config
                     obs,_=env.reset(seed=args.seed*10000+episode+seed_shift)
                     flight=FlightLog(env); ret=0.
                     trail_position=env.state[:3]
@@ -363,8 +388,10 @@ def train(args):
                     save('latest.pt'); metric_log.flush()
                     print('SMOOTH TRAIN steps',completed,'updates',agent.updates,flush=True)
                 if completed%args.eval_every==0:
-                    score=evaluate_flights(agent,config,out/f'validation_{completed}',args.eval_episodes,80001,panel,'fixed-stage smooth test')
-                    validations.append(dict(step=completed,**score))
+                    score=evaluate_flights(agent,config,out/f'validation_{completed}',args.eval_episodes,
+                        80001+1000*motion_phase if args.motion_curriculum else 80001,panel,
+                        f'motion phase {motion_phase} test' if args.motion_curriculum else 'fixed-stage smooth test')
+                    validations.append(dict(step=completed,motion_phase=motion_phase,**score))
                     (out/'validations.json').write_text(json.dumps(validations,indent=2))
                     key=(score['successes'],score['soft_landings'],-score['jerk_rms_m_s3_mean']) if score['episodes'] else (-1,-1,float('-inf'))
                     if key>best:
@@ -373,14 +400,30 @@ def train(args):
                     stable=stable+1 if good else 0
                     if panel:
                         panel.heading.configure(text='SMOOTH VISUAL LANDING - LEARNING IN PROGRESS')
-                    if stable>=3:
+                    if args.motion_curriculum and promotion_ready(validations,motion_phase,args.eval_episodes):
+                        save(f'phase_{motion_phase}_completed.pt')
+                        if motion_phase==len(PHASE_NAMES)-1:
+                            reason='final_motion_phase_stable'; break
+                        if (out/'best.pt').exists():
+                            shutil.move(out/'best.pt',out/f'best_phase_{motion_phase}.pt')
+                        motion_phase+=1; config=phase_config(motion_phase)
+                        stable=0; best=(-1,-1,float('-inf'))
+                        # Discard the partial flight at upgrade; never splice two worlds in replay.
+                        replay=Replay(4000,agent.cfg.n_step,agent.cfg.discount,args.seed+motion_phase)
+                        online=Demonstrations(4000,args.seed+motion_phase+1,30)
+                        env.cfg=config
+                        obs,_=env.reset(seed=args.seed*10000+episode+seed_shift)
+                        flight=FlightLog(env); ret=0.; trail_position=env.state[:3]
+                        write_config(); save('latest.pt')
+                        print('MOTION CURRICULUM PROMOTED',motion_phase,PHASE_NAMES[motion_phase],flush=True)
+                    elif not args.motion_curriculum and stable>=3:
                         recent=[v['successes']/v['episodes'] for v in validations[-3:]]
                         if max(recent)-min(recent)<=.0500001:
                             reason='performance_target_stable'; break
             save('latest.pt')
             if not (out/'best.pt').exists():
                 save('best.pt')
-        final=dict(steps=completed,updates=agent.updates,episodes_completed=episode,
+        final=dict(steps=completed,updates=agent.updates,episodes_completed=episode,motion_phase=motion_phase,
             training_successes=successes,soft_landings=softs,stop_reason=reason,
             wall_seconds=time.monotonic()-start,method=METHOD,status='stopped' if reason=='user_stopped' else 'completed')
         (out/'summary.json').write_text(json.dumps(final,indent=2))
@@ -423,6 +466,8 @@ def main():
         else:
             q.add_argument('--data',type=Path,required=True)
             q.add_argument('--stage',type=int,default=1)
+            q.add_argument('--motion-curriculum',action='store_true',help='Validate then promote: straight, variable speed, random spline, faster spline')
+            q.add_argument('--motion-phase',type=int,choices=range(4),default=None,help='Starting motion phase; omitted inherits checkpoint, otherwise starts at 0')
             q.add_argument('--steps',type=int,default=60000)
             q.add_argument('--eval-every',type=int,default=5000)
             q.add_argument('--eval-episodes',type=int,default=20)

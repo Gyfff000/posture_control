@@ -107,8 +107,12 @@ class CenterTracker:
             transition=np.eye(6); transition[:3,3:]=np.eye(3)*dt
             self.x=transition@self.x
             # Continuous white-acceleration covariance is independent of frame batching.
-            # Near mode assumes this experiment's horizontal constant-speed platform.
-            density=(.03 if self.near_field else .20)**2
+            # Variable-motion tasks increase uncertainty using a configured prior,
+            # not the platform's true acceleration or future trajectory.
+            process_scale=.03 if self.near_field else .20
+            if config.platform_motion!='constant':
+                process_scale=max(process_scale,config.platform_accel_max)
+            density=process_scale**2
             eye=np.eye(3)
             process=density*np.block([[eye*dt**3/3,eye*dt**2/2],[eye*dt**2/2,eye*dt]])
             self.cov=transition@self.cov@transition.T+process

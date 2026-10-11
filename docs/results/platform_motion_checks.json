@@ -1,0 +1,236 @@
+{
+  "status": "passed",
+  "motion_samples": [
+    {
+      "phase": 1,
+      "seed": 0,
+      "min_speed": 0.15699613833733966,
+      "max_speed": 0.29862516873595835,
+      "max_acceleration": 0.050000000000009336,
+      "max_turn_rate_deg_s": 0.0,
+      "max_curvature": 0.0
+    },
+    {
+      "phase": 1,
+      "seed": 1,
+      "min_speed": 0.15342927692821404,
+      "max_speed": 0.267249986733402,
+      "max_acceleration": 0.050000000000009336,
+      "max_turn_rate_deg_s": 0.0,
+      "max_curvature": 0.0
+    },
+    {
+      "phase": 1,
+      "seed": 2,
+      "min_speed": 0.14572115735480853,
+      "max_speed": 0.3122673101534984,
+      "max_acceleration": 0.050000000000009336,
+      "max_turn_rate_deg_s": 0.0,
+      "max_curvature": 0.0
+    },
+    {
+      "phase": 1,
+      "seed": 3,
+      "min_speed": 0.17556738551309725,
+      "max_speed": 0.28301924491032254,
+      "max_acceleration": 0.050000000000009336,
+      "max_turn_rate_deg_s": 0.0,
+      "max_curvature": 0.0
+    },
+    {
+      "phase": 1,
+      "seed": 4,
+      "min_speed": 0.16548740083134766,
+      "max_speed": 0.325099863531288,
+      "max_acceleration": 0.050000000000009336,
+      "max_turn_rate_deg_s": 0.0,
+      "max_curvature": 0.0
+    },
+    {
+      "phase": 1,
+      "seed": 5,
+      "min_speed": 0.17329143051234763,
+      "max_speed": 0.3135074290730543,
+      "max_acceleration": 0.050000000000009336,
+      "max_turn_rate_deg_s": 0.0,
+      "max_curvature": 0.0
+    },
+    {
+      "phase": 1,
+      "seed": 6,
+      "min_speed": 0.1654389874964215,
+      "max_speed": 0.2878519843000021,
+      "max_acceleration": 0.050000000000009336,
+      "max_turn_rate_deg_s": 0.0,
+      "max_curvature": 0.0
+    },
+    {
+      "phase": 1,
+      "seed": 7,
+      "min_speed": 0.1393656318697114,
+      "max_speed": 0.27494822309561684,
+      "max_acceleration": 0.050000000000009336,
+      "max_turn_rate_deg_s": 0.0,
+      "max_curvature": 0.0
+    },
+    {
+      "phase": 2,
+      "seed": 0,
+      "min_speed": 0.1712477442282537,
+      "max_speed": 0.3717473403730834,
+      "max_acceleration": 0.08266103064693024,
+      "max_turn_rate_deg_s": 5.834923385204605,
+      "max_curvature": 0.3351364740903623
+    },
+    {
+      "phase": 2,
+      "seed": 1,
+      "min_speed": 0.16573393430286215,
+      "max_speed": 0.32531271462421263,
+      "max_acceleration": 0.08124685727357246,
+      "max_turn_rate_deg_s": 5.706153196100514,
+      "max_curvature": 0.36179221411092477
+    },
+    {
+      "phase": 2,
+      "seed": 2,
+      "min_speed": 0.1566575378470353,
+      "max_speed": 0.38783640644119666,
+      "max_acceleration": 0.08470142989845374,
+      "max_turn_rate_deg_s": 6.243118893353874,
+      "max_curvature": 0.34256230755708805
+    },
+    {
+      "phase": 2,
+      "seed": 3,
+      "min_speed": 0.19561006764336045,
+      "max_speed": 0.3494197134578075,
+      "max_acceleration": 0.08186569419554031,
+      "max_turn_rate_deg_s": 5.640054263599706,
+      "max_curvature": 0.356619225578726
+    },
+    {
+      "phase": 2,
+      "seed": 4,
+      "min_speed": 0.18221113016785706,
+      "max_speed": 0.39531114665258527,
+      "max_acceleration": 0.08787006455551807,
+      "max_turn_rate_deg_s": 6.8356298677858724,
+      "max_curvature": 0.3270221676908546
+    },
+    {
+      "phase": 2,
+      "seed": 5,
+      "min_speed": 0.19135839318727094,
+      "max_speed": 0.3864413843950661,
+      "max_acceleration": 0.08430488500635072,
+      "max_turn_rate_deg_s": 6.436469098787074,
+      "max_curvature": 0.33520281701503174
+    },
+    {
+      "phase": 2,
+      "seed": 6,
+      "min_speed": 0.18041609419395135,
+      "max_speed": 0.3561491825784464,
+      "max_acceleration": 0.08337271152912112,
+      "max_turn_rate_deg_s": 6.337349777711254,
+      "max_curvature": 0.3683937467124308
+    },
+    {
+      "phase": 2,
+      "seed": 7,
+      "min_speed": 0.14763431126845145,
+      "max_speed": 0.3406721342943577,
+      "max_acceleration": 0.08250681874359606,
+      "max_turn_rate_deg_s": 5.997772628676762,
+      "max_curvature": 0.3656919971342062
+    },
+    {
+      "phase": 3,
+      "seed": 0,
+      "min_speed": 0.18021433899347464,
+      "max_speed": 0.488448739963134,
+      "max_acceleration": 0.160210042486323,
+      "max_turn_rate_deg_s": 12.9660608398963,
+      "max_curvature": 0.4851007711900609
+    },
+    {
+      "phase": 3,
+      "seed": 1,
+      "min_speed": 0.17254997374674805,
+      "max_speed": 0.42944759412063294,
+      "max_acceleration": 0.14850179623760304,
+      "max_turn_rate_deg_s": 12.093869645199911,
+      "max_curvature": 0.5236842171599857
+    },
+    {
+      "phase": 3,
+      "seed": 2,
+      "min_speed": 0.16090152555550674,
+      "max_speed": 0.49765438047418925,
+      "max_acceleration": 0.1539434090632402,
+      "max_turn_rate_deg_s": 13.899252521036374,
+      "max_curvature": 0.4958494596197965
+    },
+    {
+      "phase": 3,
+      "seed": 3,
+      "min_speed": 0.21501692957851942,
+      "max_speed": 0.46478429098532853,
+      "max_acceleration": 0.1497526336430786,
+      "max_turn_rate_deg_s": 10.789939423573834,
+      "max_curvature": 0.5161964594244589
+    },
+    {
+      "phase": 3,
+      "seed": 4,
+      "min_speed": 0.19582782974035048,
+      "max_speed": 0.49934394158773154,
+      "max_acceleration": 0.16224189856141236,
+      "max_turn_rate_deg_s": 13.123275721987179,
+      "max_curvature": 0.4733555372439269
+    },
+    {
+      "phase": 3,
+      "seed": 5,
+      "min_speed": 0.20787253168030895,
+      "max_speed": 0.49503048671891714,
+      "max_acceleration": 0.1524512292614276,
+      "max_turn_rate_deg_s": 13.609818361503228,
+      "max_curvature": 0.4851968007374488
+    },
+    {
+      "phase": 3,
+      "seed": 6,
+      "min_speed": 0.19360411232003816,
+      "max_speed": 0.4757484339854986,
+      "max_acceleration": 0.15498816641968988,
+      "max_turn_rate_deg_s": 12.233536870489969,
+      "max_curvature": 0.5332397529002207
+    },
+    {
+      "phase": 3,
+      "seed": 7,
+      "min_speed": 0.14857039360106028,
+      "max_speed": 0.4567610482792842,
+      "max_acceleration": 0.1426479368523943,
+      "max_turn_rate_deg_s": 10.140555021120472,
+      "max_curvature": 0.5293290451578999
+    }
+  ],
+  "periodic_position_tangent_second_derivative": true,
+  "original_straight_motion_preserved": true,
+  "seed_reproducible": true,
+  "curriculum_rejects_incomplete_or_wrong_phase_validation": true,
+  "bullet_integration": {
+    "seconds": 2.9999999999999942,
+    "platform_motion": "random_bspline",
+    "final_velocity": [
+      0.12644772204299934,
+      0.16305537386105723,
+      0.0
+    ],
+    "own_observation_dimensions_unchanged": true
+  },
+  "no_optimizer_or_training_called": true
+}

@@ -23,6 +23,7 @@
 - [任务与算法源码](landing_repro/)
 - [平滑轨迹与软着陆：改动、初步对比、当前训练与桌面入口](docs/smooth_landing.md)
 - [平台中心：部分可见与漏检预测、时间置信度、接近奖励](docs/platform_center_marker.md)
+- [参考 PerchRL 的随机 B 样条、平滑变速和后续课程训练](docs/random_platform_motion.md)
 
 桌面的 PID 调试演示使用平台真值，不能作为 DrQ-v2 学会降落的证据。
 训练和评估中的策略只读取图像和无人机自身状态；模型结果以独立评估记录为准。

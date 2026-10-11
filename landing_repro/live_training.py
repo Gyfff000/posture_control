@@ -5,6 +5,8 @@ import time
 import tkinter as tk
 from tkinter import scrolledtext
 
+import numpy as np
+
 from PIL import ImageTk
 
 from .scene_views import inspection_views, save_inspection
@@ -147,6 +149,9 @@ class LiveTraining:
         status['near_guard']=info.get('near_guard',{})
         status['near_center_reward']=info.get('near_center_reward',0.)
         status['executed_normalized_action']=info.get('executed_normalized_action',action.tolist())
+        status['platform_motion']=env.cfg.platform_motion
+        status['platform_speed_m_s']=float(np.linalg.norm(env.platform_velocity[:2]))
+        status['platform_yaw']=env.platform_yaw
         if force or now - self.last_status >= 1.:
             (self.output / "live_status.json").write_text(json.dumps(status, indent=2))
             self.last_status = now
@@ -167,7 +172,7 @@ class LiveTraining:
                 f"Steps: {step:6d} / {total}   Updates: {updates}\n"
                 f"Episode: {episode+1}   Completed: {episode}\n"
                 f"{'Test' if self.mode == 'review' else 'Training'} landings: {successes}   Replay: {replay_size}\n"
-                f"Sim time: {info['time_s']:5.1f}s   Wall: {elapsed:6.1f}s\n"
+                f"Sim time: {info['time_s']:5.1f}s   Wall: {elapsed:6.1f}s | Platform: {np.linalg.norm(env.platform_velocity[:2]):.2f} m/s\n"
                 f"Height above deck: {info['relative_position'][2]:6.2f} m\n"
                 f"Horizontal distance to platform: {(info['relative_position'][0]**2+info['relative_position'][1]**2)**.5:6.2f} m | Onboard sees pad: {info['visible']}\n"
                 f"Normalized action: {action[0]:+.2f} {action[1]:+.2f} {action[2]:+.2f}\n"
