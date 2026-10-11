@@ -15,6 +15,8 @@
 
 ## 可运行的 CPU 代码
 
+- [变速平台近距离中心丢失修复：局部光流跟踪、末段衔接与 80000 步冻结对照](docs/near_tracking_v2.md)
+
 - [运行方法、桌面入口与实现差异](docs/running_cpu_landing.md)
 - [实际实验记录与结果](docs/cpu_experiment_report.md)
 - [桌面观看真实模型训练：窗口、阶段和停止保存](docs/live_training.md)

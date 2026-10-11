@@ -55,6 +55,8 @@ class EnvConfig:
     near_command_slew_xy: float = .60
     near_command_slew_z: float = .30
     near_unknown_grace_seconds: float = 2.0
+    near_partial_tracking: bool = False
+    near_controller_version: int = 1
     terminal_finish_enabled: bool = False
     terminal_entry_height: float = .22
     terminal_finish_seconds: float = 4.0

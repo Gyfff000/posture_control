@@ -12,14 +12,14 @@ def motion_config(base_factory,phase,*assist_flags):
     settings=(dict(platform_motion='constant'),
               dict(platform_motion='variable_speed',platform_speed_min=.08,platform_speed_max=.35,
                    platform_accel_max=.10,platform_speed_noise=.25,
-                   terminal_entry_height=.10,terminal_finish_seconds=1.2),
+                   terminal_entry_height=.24,terminal_finish_seconds=2.4,terminal_finish_speed=.14),
               dict(platform_motion='random_bspline',platform_speed_min=.10,platform_speed_max=.40,
                    platform_accel_max=.15,platform_turn_rate_degrees=10.,platform_speed_noise=.30,
-                   terminal_entry_height=.09,terminal_finish_seconds=1.0),
+                   terminal_entry_height=.20,terminal_finish_seconds=2.0,terminal_finish_speed=.14),
               dict(platform_motion='random_bspline',platform_speed_min=.10,platform_speed_max=.50,
                    platform_accel_max=.25,platform_turn_rate_degrees=20.,platform_speed_noise=.40,
-                   terminal_entry_height=.08,terminal_finish_seconds=.8))
-    return replace(cfg,**settings[phase])
+                   terminal_entry_height=.17,terminal_finish_seconds=1.6,terminal_finish_speed=.14))
+    return replace(cfg,near_partial_tracking=cfg.near_landing_assist,near_controller_version=2,**settings[phase])
 
 
 def promotion_ready(validations,phase,required_episodes):

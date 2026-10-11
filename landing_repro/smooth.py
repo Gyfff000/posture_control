@@ -78,7 +78,8 @@ class FlightLog:
               'center_confidence','center_age_seconds','prediction_reward','center_mode_id','platform_pixels_visible',
               'executed_action_x','executed_action_y','executed_action_z','near_active','near_blend',
               'near_center_reward','near_descent_allowed','terminal_active','terminal_seconds',
-              'platform_vx','platform_vy','platform_yaw']
+              'platform_vx','platform_vy','platform_yaw','partial_flow_used',
+              'visual_measurement_age_seconds','terminal_completion_radius_m','terminal_refreshes']
 
     def __init__(self, env):
         self.rows = []
@@ -97,7 +98,11 @@ class FlightLog:
             info.get('near_guard',{}).get('blend',0.),info.get('near_center_reward',0.),
             int(info.get('near_guard',{}).get('descent_allowed',True)),
             int(info.get('near_guard',{}).get('terminal_active',False)),info.get('near_guard',{}).get('terminal_seconds',0.),
-            *env.platform_velocity[:2],env.platform_yaw])
+            *env.platform_velocity[:2],env.platform_yaw,
+            int(center.get('estimate_kind')=='partial_flow'),
+            center.get('measurement_age_seconds') if center.get('measurement_age_seconds') is not None else float('nan'),
+            info.get('near_guard',{}).get('terminal_completion_radius_m') if info.get('near_guard',{}).get('terminal_completion_radius_m') is not None else float('nan'),
+            info.get('near_guard',{}).get('terminal_refreshes',0)])
 
     def save(self, path):
         with Path(path).open('w', newline='') as f:
@@ -130,6 +135,8 @@ class FlightLog:
             prediction_reward_sum=float(rows[:,self.fields.index('prediction_reward')].sum()),
             near_guard_frames=int(np.sum(rows[:,self.fields.index('near_active')]>0)),
             terminal_finish_frames=int(np.sum(rows[:,self.fields.index('terminal_active')]>0)),
+            partial_flow_frames=int(np.sum(rows[:,self.fields.index('partial_flow_used')]>0)),
+            terminal_measurement_refreshes=int(np.max(rows[:,self.fields.index('terminal_refreshes')])),
             near_center_reward_sum=float(rows[:,self.fields.index('near_center_reward')].sum()),
             contact_xy_speed_m_s=None if contact is None else float(np.linalg.norm(contact[:2])),
             contact_z_speed_m_s=None if contact is None else float(abs(contact[2])))
@@ -280,6 +287,8 @@ def train(args):
         for key in ('platform_motion','platform_speed_min','platform_speed_max','platform_accel_max',
                     'platform_turn_rate_degrees','platform_speed_noise','initial_height','offset_xy','offset_z'))
     task_changed=task_changed or bool(source_training.get('motion_curriculum',False))!=args.motion_curriculum
+    task_changed=task_changed or source_config.get('near_controller_version',1)!=config.near_controller_version
+    task_changed=task_changed or bool(source_config.get('near_partial_tracking',False))!=config.near_partial_tracking
     env = MovingPlatformLanding(config,gui=args.gui)
     panel = None
     if args.gui:

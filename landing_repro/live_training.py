@@ -196,7 +196,7 @@ class LiveTraining:
                 f"Episode return: {episode_return:8.2f}\n"
                 f"Critic loss: {loss_text}\n"
                 f"Current result: {info['event'].upper()} | Center: {center['mode'].upper()} | Confidence: {center.get('confidence',0.):.2f}\n"
-                f"Since full detection: {center.get('age_seconds') or 0.:.2f}s | Prediction reward: {info.get('prediction_reward',0.):+.4f} | Guidance: {'ON' if env.cfg.prediction_guidance else 'OFF'}\n"
+                f"Since full detection: {center.get('age_seconds') or 0.:.2f}s | Source: {center.get('estimate_kind','unknown')} | Guidance: {'ON' if env.cfg.prediction_guidance else 'OFF'}\n"
                 f"Near phase: {info.get('near_guard',{}).get('phase','OFF')} | Finish: {info.get('near_guard',{}).get('terminal_seconds',0.):.1f}s | Center reward: {info.get('near_center_reward',0.):+.4f}\n"
                 f"Executed action: {' '.join(f'{v:+.2f}' for v in info.get('executed_normalized_action',action))}"))
             self.last_draw = now

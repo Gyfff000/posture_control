@@ -77,7 +77,8 @@ def detect_center(rgb, own_position, own_quaternion, config):
         eye=own_position+rotation@np.array([config.camera_offset_x,0.,config.camera_offset_z])
         world=eye+np.column_stack([right,-up,forward])@tvec[:,0]
         return dict(position=world,confidence=float(overlap),reprojection_pixels=reprojection,
-                    depth=float(tvec[2,0]),quad=quad)
+                    depth=float(tvec[2,0]),quad=quad,
+                    center_pixel=(intrinsic@tvec[:,0])[:2]/tvec[2,0])
     return None
 
 
@@ -93,6 +94,9 @@ class CenterTracker:
         self.last_quality=0.
         self.observations=0; self.near_field=False
         self.plane_samples=deque(maxlen=12)
+        from .partial_marker import PartialMarkerTracker
+        self.partial_tracker=PartialMarkerTracker()
+        self.last_visual_update=None; self.partial_updates=0
         self.result=dict(mode='unknown',position=None,velocity=None,age_seconds=None,confidence=0.)
         self.line_id=-1; self.text_id=-1
 
@@ -146,10 +150,30 @@ class CenterTracker:
                     accepted=True
             if accepted:
                 self.last_seen=time_s
+                self.last_visual_update=time_s
                 self.last_quality=measurement['confidence']
                 self.observations+=1
                 self.plane_samples.append(float(self.x[2]))
                 reason='complete_marker_accepted'
+                if config.near_partial_tracking:
+                    self.partial_tracker.seed(rgb,measurement)
+        partial_accepted=False
+        if (not accepted and self.near_field and config.near_partial_tracking
+                and self.last_seen is not None and time_s-self.last_seen<=config.near_prediction_seconds):
+            partial=self.partial_tracker.update(rgb,own_position,own_quaternion,
+                float(np.median(self.plane_samples)),config)
+            if partial is not None:
+                # Weaker than full-marker PnP. A partial update never renews full age.
+                noise=np.eye(3)*(.04+.005*(time_s-self.last_seen))**2
+                innovation=partial['position']-self.x[:3]
+                s=self.cov[:3,:3]+noise
+                if innovation@np.linalg.solve(s,innovation)<16 and np.linalg.norm(innovation[:2])<.25:
+                    gain=self.cov[:,:3]@np.linalg.inv(s)
+                    self.x+=gain@innovation
+                    kh=np.zeros((6,6)); kh[:,:3]=gain
+                    self.cov=(np.eye(6)-kh)@self.cov@(np.eye(6)-kh).T+gain@noise@gain.T
+                    self.last_visual_update=time_s; self.partial_updates+=1
+                    partial_accepted=True; reason='partial_marker_flow_accepted'
         age=None if self.last_seen is None else max(0.,time_s-self.last_seen)
         std=None if self.cov is None else np.sqrt(np.maximum(0.,np.diag(self.cov)[:3]))
         if self.x is not None and config.near_landing_assist:
@@ -180,9 +204,13 @@ class CenterTracker:
                          confidence=confidence if valid else 0.,
                          near_field=self.near_field,accepted_observations=self.observations,
                          last_measurement_quality=self.last_quality,
+                         estimate_kind='partial_flow' if partial_accepted else 'full_marker' if accepted else 'kalman_prediction',
+                         measurement_age_seconds=None if self.last_visual_update is None else time_s-self.last_visual_update,
+                         partial_updates=self.partial_updates,
+                         velocity_std_m_s=None if self.cov is None else np.sqrt(np.maximum(0.,np.diag(self.cov)[3:])).tolist(),
                          position_std_m=None if std is None else std.tolist(),
                          reason=reason if valid or age is None else 'prediction_expired_or_low_confidence',
-                         source='auxiliary RGB square-marker PnP + own pose + constant-velocity Kalman filter; heuristic confidence, not network output')
+                         source='auxiliary RGB PnP + optional partial-marker optical flow + own pose + Kalman filter; heuristic confidence, not network output')
         return self.result
 
 
@@ -229,7 +257,7 @@ def update_center_marker(env):
             top=base+[0,0,1.]
             color=[.10,.90,.25] if result['mode']=='observed' else [1.,.55,.0]
             tracker.line_id=p.addUserDebugLine(base,top,color,4,replaceItemUniqueId=tracker.line_id,physicsClientId=env.client)
-            label=('VISION center' if result['mode']=='observed' else ('FINISH COAST' if result.get('estimate_kind')=='terminal_coast' else 'NEAR PREDICTED' if result.get('near_field') else 'PREDICTED')+f' {result["age_seconds"]:.1f}s')+f' C={result["confidence"]:.2f}'
+            label=('VISION center' if result['mode']=='observed' else ('PARTIAL FLOW' if result.get('estimate_kind')=='partial_flow' else 'FINISH COAST' if result.get('estimate_kind')=='terminal_coast' else 'NEAR PREDICTED' if result.get('near_field') else 'PREDICTED')+f' {result["age_seconds"]:.1f}s')+f' C={result["confidence"]:.2f}'
             tracker.text_id=p.addUserDebugText(label,top,textColorRGB=color,textSize=1.1,
                 replaceItemUniqueId=tracker.text_id,physicsClientId=env.client)
     return result
@@ -257,7 +285,7 @@ def overlay(image,result,view,projection):
     draw=ImageDraw.Draw(image)
     mode=result['mode']
     color=(20,220,70) if mode=='observed' else (255,145,0)
-    label='VISION estimate' if mode=='observed' else ('FINISH COAST' if result.get('estimate_kind')=='terminal_coast' else 'NEAR PRED' if result.get('near_field') else 'PREDICTED')+f' {result["age_seconds"]:.1f}s' if mode=='predicted' else 'CENTER UNKNOWN'
+    label='VISION estimate' if mode=='observed' else ('PARTIAL FLOW' if result.get('estimate_kind')=='partial_flow' else 'FINISH COAST' if result.get('estimate_kind')=='terminal_coast' else 'NEAR PRED' if result.get('near_field') else 'PREDICTED')+f' {result["age_seconds"]:.1f}s' if mode=='predicted' else 'CENTER UNKNOWN'
     if mode!='unknown':
         label+=f' C={result["confidence"]:.2f}'
     if result['position'] is not None:

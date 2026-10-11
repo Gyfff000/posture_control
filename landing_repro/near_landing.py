@@ -26,13 +26,36 @@ class NearLandingGuard:
         self.terminal_position=None; self.terminal_velocity=None
         self.terminal_quality=0.; self.terminal_age=0.
         self.terminal_duration=0.
+        self.terminal_blind_seconds=0.; self.terminal_refreshes=0
+        self.terminal_position_std=0.; self.terminal_velocity_std=0.
+
+    def completion_radius(self,state,config,position=None,position_std=None,velocity_std=None,blind_seconds=None):
+        position=self.terminal_position if position is None else np.asarray(position)
+        position_std=self.terminal_position_std if position_std is None else position_std
+        velocity_std=self.terminal_velocity_std if velocity_std is None else velocity_std
+        blind_seconds=self.terminal_blind_seconds if blind_seconds is None else blind_seconds
+        remaining=max(0.,float(state[2]-position[2])-.035)/config.terminal_finish_speed+.25
+        horizon=blind_seconds+remaining
+        acceleration=0. if config.platform_motion=='constant' else config.platform_accel_max
+        # Conservative geometric budget, NOT a calibrated probability interval.
+        return float(np.linalg.norm(position[:2]-state[:2])+position_std+
+                     velocity_std*horizon+.5*acceleration*horizon**2),remaining
+
+    def latch(self,center):
+        self.terminal_position=np.asarray(center['position'],dtype=float).copy()
+        self.terminal_velocity=np.asarray(center['velocity'],dtype=float).copy()
+        self.terminal_velocity[2]=0.
+        self.terminal_position_std=float(max(center.get('position_std_m',[0.,0.])[:2]))
+        self.terminal_velocity_std=float(max(center.get('velocity_std_m_s',[0.,0.])[:2]))
+        self.terminal_quality=float(center['confidence']); self.terminal_age=float(center['age_seconds'])
+        self.terminal_blind_seconds=0.
 
     def terminal_estimate(self):
         if not self.terminal_active:
             return None
         return dict(mode='predicted',position=self.terminal_position.tolist(),
-            velocity=self.terminal_velocity.tolist(),confidence=float(self.terminal_quality*np.exp(-self.terminal_seconds/2.)),
-            age_seconds=self.terminal_age+self.terminal_seconds,near_field=True,
+            velocity=self.terminal_velocity.tolist(),confidence=float(self.terminal_quality*np.exp(-self.terminal_blind_seconds/2.)),
+            age_seconds=self.terminal_age+self.terminal_blind_seconds,near_field=True,
             estimate_kind='terminal_coast',terminal_seconds=self.terminal_seconds,
             reason='bounded_terminal_completion',source=f'Latched terminal estimate + horizontal velocity; max {self.terminal_duration:g}s finish controller, not a fresh detection')
 
@@ -61,30 +84,39 @@ class NearLandingGuard:
         if self.last_plane is not None:
             height=float(state[2]-self.last_plane)
         terminal_timed_out=False; terminal_aborted=False
+        completion_radius=None
         tilt=max(abs(v) for v in p.getEulerFromQuaternion(state[3:7])[:2])
         if config.terminal_finish_enabled:
             if self.terminal_active:
                 self.terminal_seconds+=dt
+                self.terminal_blind_seconds+=dt
                 self.terminal_position+=dt*self.terminal_velocity
+                # Fresh partial/full camera updates correct the coast; a mere KF
+                # extrapolation must not reset its blind-time uncertainty budget.
+                if (reliable and center.get('measurement_age_seconds',center.get('age_seconds',999.))<=.10
+                        and center.get('confidence',0.)>=.12
+                        and np.linalg.norm(np.asarray(center['position'])[:2]-self.terminal_position[:2])<.20):
+                    self.latch(center); self.terminal_refreshes+=1
                 error=np.linalg.norm(self.terminal_position[:2]-state[:2])
                 relative_speed=np.linalg.norm(np.asarray(state[10:12])-self.terminal_velocity[:2])
+                completion_radius,_=self.completion_radius(state,config)
                 if self.terminal_seconds>=config.terminal_finish_seconds:
                     self.terminal_active=False; terminal_timed_out=True
-                elif error>.30 or relative_speed>.35 or tilt>np.deg2rad(20) or state[2]-self.terminal_position[2]>.35 or requested[2]>.15:
+                elif completion_radius>.40 or error>.30 or relative_speed>.35 or tilt>np.deg2rad(20) or state[2]-self.terminal_position[2]>.35 or requested[2]>.15:
                     self.terminal_active=False; terminal_aborted=True
             elif self.active and reliable and not self.terminal_attempted:
                 distance=np.linalg.norm(np.asarray(center['position'])[:2]-state[:2])
                 speed=np.linalg.norm(np.asarray(state[10:12])-np.asarray(center['velocity'])[:2])
                 std=max(center.get('position_std_m',[float('inf')]*3)[:2])
+                velocity_std=max(center.get('velocity_std_m_s',[0.,0.])[:2])
+                completion_radius,remaining=self.completion_radius(state,config,center['position'],std,velocity_std,0.)
                 if (.02<height<=config.terminal_entry_height and distance<=.16 and speed<=.12
                         and tilt<=np.deg2rad(12) and center.get('confidence',0.)>=.12 and std<=.30
+                        and completion_radius<=.40 and remaining<config.terminal_finish_seconds
                         and requested[2]<-.02):
                     self.terminal_active=True; self.terminal_attempted=True; self.terminal_seconds=dt
                     self.terminal_duration=config.terminal_finish_seconds
-                    self.terminal_velocity=np.asarray(center['velocity'],dtype=float).copy()
-                    self.terminal_velocity[2]=0.
-                    self.terminal_position=np.asarray(center['position'],dtype=float)+dt*self.terminal_velocity
-                    self.terminal_quality=float(center['confidence']); self.terminal_age=float(center['age_seconds'])
+                    self.latch(center)
             if self.terminal_active:
                 center=self.terminal_estimate()
                 reliable=True
@@ -126,6 +158,7 @@ class NearLandingGuard:
             tracker_reliable=tracker_reliable,terminal_active=self.terminal_active,
             terminal_seconds=self.terminal_seconds,terminal_timed_out=terminal_timed_out,
             terminal_aborted=terminal_aborted,descent_limit_m_s=config.terminal_finish_speed if self.terminal_active else descent_limit,
+            terminal_completion_radius_m=completion_radius,terminal_refreshes=self.terminal_refreshes,
             phase='terminal_finish' if self.terminal_active else 'near_tracking')
 
 

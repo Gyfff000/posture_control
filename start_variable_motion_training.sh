@@ -23,6 +23,12 @@ fi
 if [[ ! -f "$checkpoint" ]]; then printf 'Checkpoint not found: %s\n' "$checkpoint"; exit 1; fi
 saved_steps="$(python -c 'import sys,torch; print(torch.load(sys.argv[1],map_location="cpu",weights_only=False)["steps"])' "$checkpoint")"
 total_steps=$((saved_steps+80000))
+if [[ -n "${LANDING_TOTAL_STEPS:-}" ]]; then
+    if [[ ! "$LANDING_TOTAL_STEPS" =~ ^[0-9]+$ ]] || (( LANDING_TOTAL_STEPS <= saved_steps )); then
+        printf 'LANDING_TOTAL_STEPS must be an integer greater than saved steps.\n'; exit 1
+    fi
+    total_steps="$LANDING_TOTAL_STEPS"
+fi
 out="runs/motion_curriculum_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$out"
 printf '%s\n' "$out" > runs/current_smooth_training.txt

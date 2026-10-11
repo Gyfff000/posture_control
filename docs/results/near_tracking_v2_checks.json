@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "optical_flow_max_world_error_m": 0.018854848798699027,
+  "clipped_marker_flow_checked": true,
+  "rejects_blank_camera": true,
+  "partial_update_does_not_reset_full_age": true,
+  "confidence_decays_and_missing_view_expires": true,
+  "earlier_variable_motion_completion": true,
+  "uncertain_commitment_rejected": true,
+  "fresh_visual_update_refreshes_finish": true,
+  "physical_contact_after_loss": "success",
+  "optimizer_updates": 0
+}

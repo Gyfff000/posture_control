@@ -2,6 +2,8 @@
 
 日期：2026-10-11。
 
+后续变速平台修订见 [局部视觉跟踪与末段衔接](near_tracking_v2.md)：下文记录早期匀速阶段参数与验证；变速课程现使用更早的入口、几何误差预算和新鲜视觉更新修正。
+
 文献：**Autonomous Landing on a Moving Platform Using Vision-Based Deep Reinforcement Learning**，Pawel Ladosz 等，IEEE RA-L 2024，DOI：10.1109/LRA.2024.3379837。
 
 本页记录本仓库增加的辅助控制改进，不是论文原算法或纯 DrQ-v2 的复现成绩。
