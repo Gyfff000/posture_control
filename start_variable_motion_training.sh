@@ -15,6 +15,11 @@ export LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2 OMP_NUM_THREADS=2 MKL_NUM_THREAD
 checkpoint="$previous/latest.pt"
 if [[ -f "$previous/interrupted.pt" ]]; then checkpoint="$previous/interrupted.pt"; fi
 checkpoint="${1:-$checkpoint}"
+phase_args=()
+if [[ -n "${2:-}" ]]; then
+    if [[ ! "$2" =~ ^[0-3]$ ]]; then printf 'Motion phase must be 0..3.\n'; exit 1; fi
+    phase_args=(--motion-phase "$2")
+fi
 if [[ ! -f "$checkpoint" ]]; then printf 'Checkpoint not found: %s\n' "$checkpoint"; exit 1; fi
 saved_steps="$(python -c 'import sys,torch; print(torch.load(sys.argv[1],map_location="cpu",weights_only=False)["steps"])' "$checkpoint")"
 total_steps=$((saved_steps+80000))
@@ -24,6 +29,6 @@ printf '%s\n' "$out" > runs/current_smooth_training.txt
 printf '%s\n' "$$" > "$out/training.pid"
 exec python -m landing_repro.smooth train --checkpoint "$checkpoint" \
     --data runs/smooth_prepare_seed31/demonstrations.npz --output "$out" \
-    --motion-curriculum --steps "$total_steps" --step-offset "$saved_steps" \
+    --motion-curriculum "${phase_args[@]}" --steps "$total_steps" --step-offset "$saved_steps" \
     --resume-run "$previous" --eval-every 5000 --eval-episodes 20 --seed 41 \
     --prediction-guidance --near-landing-assist --terminal-finish-assist --gui
