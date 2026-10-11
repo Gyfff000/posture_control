@@ -87,6 +87,8 @@ class MovingPlatformLanding(gym.Env):
         super().__init__()
         self.cfg = cfg or EnvConfig()
         c = self.cfg
+        if c.near_landing_assist and not c.prediction_guidance:
+            raise ValueError('Near landing assist requires the camera estimator / prediction guidance')
         assert c.physics_hz % c.control_hz == 0 and c.control_hz % c.policy_hz == 0
         self.gui = gui
         self.sim = PlatformAviary(drone_model=DroneModel.CF2X, num_drones=1,
@@ -145,6 +147,8 @@ class MovingPlatformLanding(gym.Env):
         self.applied_velocity = np.zeros(3)
         self.previous_command = np.zeros(3, np.float32)
         self.command_acceleration = np.zeros(3)
+        from .near_landing import NearLandingGuard
+        self.near_guard=NearLandingGuard()
         self.frames.clear()
         self.proprio_frames.clear()
         self._observe()
@@ -236,7 +240,13 @@ class MovingPlatformLanding(gym.Env):
         action = np.asarray(action, np.float32)
         if action.shape != (3,) or not np.isfinite(action).all():
             raise ValueError("Expected three finite normalized velocity commands")
-        command = np.clip(action, -1, 1) * LIMITS
+        requested_command = np.clip(action, -1, 1) * LIMITS
+        command=requested_command.copy()
+        guard=dict(active=False,blend=0.,unknown_seconds=0.)
+        if self.cfg.near_landing_assist:
+            command,guard=self.near_guard.apply(command,self.state,self.center_estimate,
+                1./self.cfg.policy_hz,self.cfg)
+            command=np.clip(command,-LIMITS,LIMITS)
         action_change = float(np.mean((np.clip(action, -1, 1) - self.previous_command)**2))
         before_relative = self.state[:3] - (self.platform_position + np.array([0., 0., .04]))
         before_position=self.state[:3].copy()
@@ -248,11 +258,15 @@ class MovingPlatformLanding(gym.Env):
             state = self.state
             acceleration = np.array([self.cfg.acceleration_limit_xy, self.cfg.acceleration_limit_xy,
                                      self.cfg.acceleration_limit_z])
+            blend=guard['blend']
+            acceleration=(1.-blend)*acceleration+blend*np.array([.60,.60,.30])
             if self.cfg.jerk_limit_xy > 0 and self.cfg.jerk_limit_z > 0:
                 dt = self.sim.CTRL_TIMESTEP
-                desired = np.clip((command-self.applied_velocity)/self.cfg.velocity_response_seconds,
+                response=(1.-blend)*self.cfg.velocity_response_seconds+blend*.30
+                desired = np.clip((command-self.applied_velocity)/response,
                                   -acceleration, acceleration)
                 jerk = np.array([self.cfg.jerk_limit_xy]*2 + [self.cfg.jerk_limit_z])
+                jerk=(1.-blend)*jerk+blend*np.array([2.,2.,1.])
                 self.command_acceleration += np.clip(desired-self.command_acceleration, -jerk*dt, jerk*dt)
                 self.applied_velocity += self.command_acceleration*dt
             else:
@@ -278,6 +292,9 @@ class MovingPlatformLanding(gym.Env):
         info["pre_contact_relative_velocity"] = (None if pre_contact_velocity is None else pre_contact_velocity.tolist())
         info['command_acceleration'] = self.command_acceleration.tolist()
         info['action_change_squared'] = action_change
+        info['requested_command_velocity']=requested_command.tolist()
+        info['executed_normalized_action']=(command/LIMITS).tolist()
+        info['near_guard']=guard
         dxy = float(np.linalg.norm(info["relative_position"][:2]))
         info.update(reward_terms(dxy, self.state[12], command[2], self.visible, event, self.cfg))
         if self.cfg.reward_mode == "guided_progress":
@@ -308,6 +325,9 @@ class MovingPlatformLanding(gym.Env):
         if self.cfg.escape_distance > 0 and dxy > self.cfg.escape_distance and event == "running":
             event = info["event"] = "escaped"
             info["reward"] = -10.
+        if self.cfg.near_landing_assist and guard['active'] and guard['unknown_seconds']>=self.cfg.near_unknown_grace_seconds and event=='running':
+            event=info['event']='near_estimate_lost'
+            info['reward']=-5.
         prediction_valid=self.cfg.prediction_guidance and self.center_estimate['mode']=='predicted'
         if self.cfg.lost_view_seconds > 0 and self.invisible_seconds >= self.cfg.lost_view_seconds and event == "running" and not prediction_valid:
             event = info["event"] = "lost_view"
@@ -318,7 +338,12 @@ class MovingPlatformLanding(gym.Env):
             info["event"] = "timeout"
             if self.cfg.reward_mode == "guided_progress":
                 info["reward"] = -2.
-        smooth_penalty = self.cfg.action_smooth_weight * action_change
+        smooth_penalty = (self.cfg.action_smooth_weight+.20*guard['blend']) * action_change
+        info['near_center_reward']=0.
+        if self.cfg.near_landing_assist and event=='running' and not truncated:
+            from .near_landing import near_center_reward
+            info['near_center_reward']=near_center_reward(self.state,self.center_estimate)
+            info['reward']+=info['near_center_reward']
         soft_penalty = 0.
         relative = np.asarray(info['relative_velocity'])
         if self.cfg.soft_landing_weight > 0 and 0 < info['relative_position'][2] < .6 and event == 'running':
@@ -333,7 +358,7 @@ class MovingPlatformLanding(gym.Env):
             soft_penalty += 2.*(np.linalg.norm(contact[:2])**2 + max(0., abs(contact[2])-.15)**2)
         info['smooth_penalty'], info['soft_penalty'] = smooth_penalty, soft_penalty
         info['reward'] -= smooth_penalty + soft_penalty
-        self.previous_command = np.clip(action, -1, 1).copy()
+        self.previous_command = (command/LIMITS).astype(np.float32) if self.cfg.near_landing_assist else np.clip(action, -1, 1).copy()
         self.finished = terminated or truncated
         return self._observation(), info["reward"], terminated, truncated, info
 

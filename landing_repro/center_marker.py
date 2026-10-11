@@ -4,6 +4,7 @@ No segmentation IDs or platform truth are used. This is an auxiliary estimator,
 not an explanation of the network's hidden features or a policy input.
 """
 from functools import lru_cache
+from collections import deque
 
 import cv2
 import numpy as np
@@ -90,6 +91,8 @@ class CenterTracker:
     def reset(self):
         self.x=None; self.cov=None; self.time=None; self.last_seen=None
         self.last_quality=0.
+        self.observations=0; self.near_field=False
+        self.plane_samples=deque(maxlen=12)
         self.result=dict(mode='unknown',position=None,velocity=None,age_seconds=None,confidence=0.)
         self.line_id=-1; self.text_id=-1
 
@@ -103,8 +106,12 @@ class CenterTracker:
         if self.x is not None:
             transition=np.eye(6); transition[:3,3:]=np.eye(3)*dt
             self.x=transition@self.x
-            g=np.vstack([np.eye(3)*dt*dt/2,np.eye(3)*dt])
-            self.cov=transition@self.cov@transition.T+.20**2*g@g.T
+            # Continuous white-acceleration covariance is independent of frame batching.
+            # Near mode assumes this experiment's horizontal constant-speed platform.
+            density=(.03 if self.near_field else .20)**2
+            eye=np.eye(3)
+            process=density*np.block([[eye*dt**3/3,eye*dt**2/2],[eye*dt**2/2,eye*dt]])
+            self.cov=transition@self.cov@transition.T+process
         measurement=detect_center(rgb,own_position,own_quaternion,config)
         accepted=False
         reason='not_detected_or_incomplete'
@@ -114,7 +121,8 @@ class CenterTracker:
         if measurement is not None:
             reason='innovation_rejected'
             z=measurement['position']
-            if self.x is None or time_s-self.last_seen>self.max_age:
+            reacquire_age=config.near_prediction_seconds if self.near_field else self.max_age
+            if self.x is None or time_s-self.last_seen>reacquire_age:
                 self.x=np.r_[z,np.zeros(3)]
                 self.cov=np.diag([.03**2]*3+[.7**2]*3)
                 accepted=True
@@ -135,16 +143,40 @@ class CenterTracker:
             if accepted:
                 self.last_seen=time_s
                 self.last_quality=measurement['confidence']
+                self.observations+=1
+                self.plane_samples.append(float(self.x[2]))
                 reason='complete_marker_accepted'
         age=None if self.last_seen is None else max(0.,time_s-self.last_seen)
-        confidence=0. if age is None else float(self.last_quality*np.exp(-age/self.confidence_tau))
-        valid=self.x is not None and age<=self.max_age and confidence>=self.min_confidence
+        std=None if self.cov is None else np.sqrt(np.maximum(0.,np.diag(self.cov)[:3]))
+        if self.x is not None and config.near_landing_assist:
+            height=float(own_position[2]-self.x[2])
+            distance=float(np.linalg.norm(np.asarray(own_position)[:2]-self.x[:2]))
+            # Arm before the 1m square fills the camera. Never arm from stale data.
+            if (not self.near_field and self.observations>=5 and age<=.5
+                    and -.05<height<=config.near_enter_height and distance<=.65
+                    and max(std[:2])<.15 and self.last_quality*np.exp(-age/self.confidence_tau)>=.25):
+                self.near_field=True
+            elif self.near_field and (height>config.near_exit_height or distance>1.3):
+                self.near_field=False
+            if self.near_field:
+                # Horizontal moving platform assumption; do not extrapolate noisy PnP vz.
+                self.x[2]=float(np.median(self.plane_samples)); self.x[5]=0.
+        tau=config.near_confidence_tau if self.near_field else self.confidence_tau
+        maximum=config.near_prediction_seconds if self.near_field else self.max_age
+        minimum=config.near_min_confidence if self.near_field else self.min_confidence
+        confidence=0. if age is None else float(self.last_quality*np.exp(-age/tau))
+        if self.near_field and not accepted:
+            confidence*=float(np.exp(-(max(std[:2])/.5)**2))
+        valid=self.x is not None and age<=maximum and confidence>=minimum
+        if self.near_field and max(std[:2])>config.near_max_position_std:
+            valid=False
         self.result=dict(mode='observed' if accepted else 'predicted' if valid else 'unknown',
                          position=self.x[:3].tolist() if valid else None,
                          velocity=self.x[3:].tolist() if valid else None,age_seconds=age,
                          confidence=confidence if valid else 0.,
+                         near_field=self.near_field,accepted_observations=self.observations,
                          last_measurement_quality=self.last_quality,
-                         position_std_m=None if self.cov is None else np.sqrt(np.maximum(0.,np.diag(self.cov)[:3])).tolist(),
+                         position_std_m=None if std is None else std.tolist(),
                          reason=reason if valid or age is None else 'prediction_expired_or_low_confidence',
                          source='auxiliary RGB square-marker PnP + own pose + constant-velocity Kalman filter; heuristic confidence, not network output')
         return self.result
@@ -187,7 +219,7 @@ def update_center_marker(env):
             top=base+[0,0,1.]
             color=[.10,.90,.25] if result['mode']=='observed' else [1.,.55,.0]
             tracker.line_id=p.addUserDebugLine(base,top,color,4,replaceItemUniqueId=tracker.line_id,physicsClientId=env.client)
-            label=('VISION center' if result['mode']=='observed' else f'PREDICTED {result["age_seconds"]:.1f}s')+f' C={result["confidence"]:.2f}'
+            label=('VISION center' if result['mode']=='observed' else ('NEAR PREDICTED' if result.get('near_field') else 'PREDICTED')+f' {result["age_seconds"]:.1f}s')+f' C={result["confidence"]:.2f}'
             tracker.text_id=p.addUserDebugText(label,top,textColorRGB=color,textSize=1.1,
                 replaceItemUniqueId=tracker.text_id,physicsClientId=env.client)
     return result
@@ -215,7 +247,7 @@ def overlay(image,result,view,projection):
     draw=ImageDraw.Draw(image)
     mode=result['mode']
     color=(20,220,70) if mode=='observed' else (255,145,0)
-    label='VISION estimate' if mode=='observed' else f'PREDICTED {result["age_seconds"]:.1f}s' if mode=='predicted' else 'CENTER UNKNOWN'
+    label='VISION estimate' if mode=='observed' else ('NEAR PRED' if result.get('near_field') else 'PREDICTED')+f' {result["age_seconds"]:.1f}s' if mode=='predicted' else 'CENTER UNKNOWN'
     if mode!='unknown':
         label+=f' C={result["confidence"]:.2f}'
     if result['position'] is not None:

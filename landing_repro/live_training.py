@@ -39,7 +39,7 @@ class LiveTraining:
             label = tk.Label(group)
             label.pack()
             self.view_labels.append(label)
-        tk.Label(self.root,text='Center line: GREEN = camera estimate | ORANGE = partial/lost detection prediction (max 2s) | C = confidence | UNKNOWN = no estimate. Not a network output.',wraplength=1000).pack()
+        tk.Label(self.root,text='GREEN = camera estimate | ORANGE = prediction (normal max 2s; armed near-field max 8s) | C = confidence | UNKNOWN = no estimate. Auxiliary estimator.',wraplength=1000).pack()
         self.stats = tk.Label(self.root, text="Starting...", justify="left", anchor="w", font=("Courier", 11))
         self.stats.pack(fill="x", padx=10)
         controls = tk.Frame(self.root)
@@ -144,6 +144,9 @@ class LiveTraining:
         status['center_estimate']=center
         status['prediction_reward']=info.get('prediction_reward',0.)
         status['prediction_guidance']=env.cfg.prediction_guidance
+        status['near_guard']=info.get('near_guard',{})
+        status['near_center_reward']=info.get('near_center_reward',0.)
+        status['executed_normalized_action']=info.get('executed_normalized_action',action.tolist())
         if force or now - self.last_status >= 1.:
             (self.output / "live_status.json").write_text(json.dumps(status, indent=2))
             self.last_status = now
@@ -171,7 +174,9 @@ class LiveTraining:
                 f"Episode return: {episode_return:8.2f}\n"
                 f"Critic loss: {loss_text}\n"
                 f"Current result: {info['event'].upper()} | Center: {center['mode'].upper()} | Confidence: {center.get('confidence',0.):.2f}\n"
-                f"Since full detection: {center.get('age_seconds') or 0.:.2f}s | Prediction reward: {info.get('prediction_reward',0.):+.4f} | Guidance: {'ON' if env.cfg.prediction_guidance else 'OFF'}"))
+                f"Since full detection: {center.get('age_seconds') or 0.:.2f}s | Prediction reward: {info.get('prediction_reward',0.):+.4f} | Guidance: {'ON' if env.cfg.prediction_guidance else 'OFF'}\n"
+                f"Near assist: {'ACTIVE' if info.get('near_guard',{}).get('active') else 'OFF'} | Center reward: {info.get('near_center_reward',0.):+.4f}\n"
+                f"Executed action: {' '.join(f'{v:+.2f}' for v in info.get('executed_normalized_action',action))}"))
             self.last_draw = now
         self.pump()
 
@@ -198,6 +203,7 @@ class LiveTraining:
                 f'Height above deck: {info["relative_position"][2]:.2f} m | Onboard sees pad: {info["visible"]}\n'
                 f'Test return: {episode_return:.2f} | Network action: {action[0]:+.2f} {action[1]:+.2f} {action[2]:+.2f}\n'
                 f'Center: {env._center_tracker.result["mode"]} | C={env._center_tracker.result.get("confidence",0.):.2f} | Prediction reward={info.get("prediction_reward",0.):+.4f}\n'
+                f'Near assist: {info.get("near_guard",{}).get("active",False)} | Executed: {info.get("executed_normalized_action",action.tolist())}\n'
                 'Three views show the TEST world. Separate PyBullet window holds the training world.\n'
                 'Training resumes automatically when validation finishes.'))
             self.last_draw = now
@@ -207,6 +213,9 @@ class LiveTraining:
                           test_group=group, test_episode=episode, test_episodes=episodes,
                           test_sim_time=info['time_s'], event=info['event'])
             status['center_estimate']=update_center_marker(env)
+            status['near_guard']=info.get('near_guard',{})
+            status['prediction_reward']=info.get('prediction_reward',0.)
+            status['prediction_guidance']=env.cfg.prediction_guidance
             (self.output/'live_status.json').write_text(json.dumps(status, indent=2))
             self.last_status = now
         self.pump()

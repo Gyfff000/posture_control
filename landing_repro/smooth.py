@@ -23,12 +23,13 @@ from .guided import Demonstrations, clone_step, stage_config
 METHOD = 'Assisted visual DrQ-v2 + command memory + smoothness losses + bounded command jerk + soft-contact shaping'
 
 
-def smooth_config(stage=1,prediction_guidance=False):
+def smooth_config(stage=1,prediction_guidance=False,near_landing_assist=False):
     return replace(stage_config(stage), smooth_observation=True, action_smooth_weight=.10,
                    soft_landing_weight=.10, acceleration_limit_xy=2., acceleration_limit_z=.8,
                    jerk_limit_xy=8., jerk_limit_z=4., velocity_response_seconds=.10,
                    prediction_guidance=prediction_guidance,
-                   center_min_measurement_quality=.45 if prediction_guidance else .35)
+                   center_min_measurement_quality=.45 if prediction_guidance else .35,
+                   near_landing_assist=near_landing_assist)
 
 
 def smooth_teacher(env):
@@ -73,7 +74,9 @@ class FlightLog:
               'relative_x','relative_y','relative_z','vx','vy','vz',
               'action_x','action_y','action_z','applied_vx','applied_vy','applied_vz',
               'command_ax','command_ay','command_az','center_x','center_y','center_z',
-              'center_confidence','center_age_seconds','prediction_reward','center_mode_id','platform_pixels_visible']
+              'center_confidence','center_age_seconds','prediction_reward','center_mode_id','platform_pixels_visible',
+              'executed_action_x','executed_action_y','executed_action_z','near_active','near_blend',
+              'near_center_reward','near_descent_allowed']
 
     def __init__(self, env):
         self.rows = []
@@ -87,7 +90,10 @@ class FlightLog:
             *env.applied_velocity, *env.command_acceleration,
             *(position if position is not None else [float('nan')]*3),
             center.get('confidence',0.),center.get('age_seconds') or 0.,info.get('prediction_reward',0.),
-            {'unknown':-1,'predicted':0,'observed':1}.get(center.get('mode'),-1),int(env.visible)])
+            {'unknown':-1,'predicted':0,'observed':1}.get(center.get('mode'),-1),int(env.visible),
+            *info.get('executed_normalized_action',action),int(info.get('near_guard',{}).get('active',False)),
+            info.get('near_guard',{}).get('blend',0.),info.get('near_center_reward',0.),
+            int(info.get('near_guard',{}).get('descent_allowed',True))])
 
     def save(self, path):
         with Path(path).open('w', newline='') as f:
@@ -103,11 +109,14 @@ class FlightLog:
         accel = np.diff(flight[:,10:13], axis=0)/dt[:,None]
         jerk = np.diff(accel,axis=0)/((dt[1:]+dt[:-1])*.5)[:,None]
         changes = np.diff(flight[:,13:16],axis=0)
+        executed_index=self.fields.index('executed_action_x')
+        executed_changes=np.diff(flight[:,executed_index:executed_index+3],axis=0)
         contact = info.get('pre_contact_relative_velocity')
         return dict(event=info['event'], success=bool(info['success']),
             soft_landing=bool(info.get('soft_landing',False)), time_s=info['time_s'],
             xy_error_m=float(np.linalg.norm(info['relative_position'][:2])),
             action_delta_rms=float(np.sqrt(np.mean(np.sum(changes**2,axis=1)))),
+            executed_action_delta_rms=float(np.sqrt(np.mean(np.sum(executed_changes**2,axis=1)))),
             acceleration_rms_m_s2=float(np.sqrt(np.mean(np.sum(accel**2,axis=1)))),
             jerk_rms_m_s3=float(np.sqrt(np.mean(np.sum(jerk**2,axis=1)))) if len(jerk) else 0.,
             path_length_m=float(np.linalg.norm(np.diff(rows[:,1:4],axis=0),axis=1).sum()),
@@ -115,6 +124,8 @@ class FlightLog:
             predicted_frames=int(np.sum(rows[:,self.fields.index('center_mode_id')]==0)),
             partial_marker_predicted_frames=int(np.sum((rows[:,self.fields.index('center_mode_id')]==0)&(rows[:,self.fields.index('platform_pixels_visible')]>0))),
             prediction_reward_sum=float(rows[:,self.fields.index('prediction_reward')].sum()),
+            near_guard_frames=int(np.sum(rows[:,self.fields.index('near_active')]>0)),
+            near_center_reward_sum=float(rows[:,self.fields.index('near_center_reward')].sum()),
             contact_xy_speed_m_s=None if contact is None else float(np.linalg.norm(contact[:2])),
             contact_z_speed_m_s=None if contact is None else float(abs(contact[2])))
 
@@ -200,11 +211,12 @@ def benchmark(args):
     baseline,_ = DrQV2.load(args.baseline)
     smooth,smooth_metadata = DrQV2.load(args.checkpoint)
     prediction_enabled=smooth_metadata.get('env_config',{}).get('prediction_guidance',False)
+    near_enabled=smooth_metadata.get('env_config',{}).get('near_landing_assist',False)
     results = {}
     for stage in args.stages:
         results[str(stage)] = {}
         for name, agent, config in [('baseline',baseline,stage_config(stage)),
-                                    ('smooth',smooth,smooth_config(stage,prediction_enabled))]:
+                                    ('smooth',smooth,smooth_config(stage,prediction_enabled,near_enabled))]:
             results[str(stage)][name] = evaluate_flights(agent,config,out/f'stage{stage}_{name}',
                                                        args.episodes,args.seed)
     (out/'comparison.json').write_text(json.dumps(results,indent=2))
@@ -244,8 +256,9 @@ def train(args):
     torch.manual_seed(args.seed)
     source_config=source.get('env_config',{})
     prediction_enabled=source_config.get('prediction_guidance',False) if args.prediction_guidance is None else args.prediction_guidance
-    config = smooth_config(args.stage,prediction_enabled)
-    task_changed=bool(source_config.get('prediction_guidance',False))!=config.prediction_guidance
+    near_enabled=source_config.get('near_landing_assist',False) if args.near_landing_assist is None else args.near_landing_assist
+    config = smooth_config(args.stage,prediction_enabled,near_enabled)
+    task_changed=any(bool(source_config.get(key,False))!=getattr(config,key) for key in ('prediction_guidance','near_landing_assist'))
     env = MovingPlatformLanding(config,gui=args.gui)
     panel = None
     if args.gui:
@@ -328,7 +341,7 @@ def train(args):
                 if panel:
                     panel.training_step=completed
                     panel.training_label=f'SMOOTH MODEL TRAINING | Stage {args.stage} | Soft landings {softs}'
-                    panel.saved_result.configure(text='30D own state + camera; smoothness losses + command jerk limits + soft-contact target.\nBlue = flown path; GREEN/ORANGE = auxiliary estimate/prediction. '+('Confidence-weighted prediction reward ON; estimate is not a policy input.' if config.prediction_guidance else 'Marker display only.'))
+                    panel.saved_result.configure(text='30D own state + camera; smoothness losses + command jerk limits + soft-contact target.\n'+('NEAR ASSIST: extended estimate + constrained network commands; hybrid policy/controller.' if config.near_landing_assist else 'Blue = flown path; GREEN/ORANGE = auxiliary estimate/prediction. '+('Confidence-weighted prediction reward ON; estimate is not a policy input.' if config.prediction_guidance else 'Marker display only.')))
                     panel.update(env,completed,args.steps,0,agent.updates,episode,successes,
                         replay.size,ret,action,info,metrics,time.monotonic()-start,force=term or trunc)
                 if term or trunc:
@@ -414,6 +427,8 @@ def main():
             q.add_argument('--resume-run',type=Path,help='Previous run containing episode/validation history; replay and partial flight reset')
             q.add_argument('--prediction-guidance',action=argparse.BooleanOptionalAction,default=None,
                 help='Confidence-weighted prediction reward; omitted means inherit checkpoint setting')
+            q.add_argument('--near-landing-assist',action=argparse.BooleanOptionalAction,default=None,
+                help='Estimated-state near-field prediction and action constraints; hybrid controller, inherits checkpoint if omitted')
     args=parser.parse_args()
     if args.command=='prepare': prepare(args)
     elif args.command=='benchmark': benchmark(args)

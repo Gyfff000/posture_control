@@ -41,6 +41,16 @@ class EnvConfig:
     center_min_confidence: float = .10
     center_min_measurement_quality: float = .35
     prediction_reward_weight: float = 4.0
+    near_landing_assist: bool = False
+    near_enter_height: float = 1.0
+    near_exit_height: float = 1.3
+    near_prediction_seconds: float = 8.0
+    near_confidence_tau: float = 6.0
+    near_min_confidence: float = .06
+    near_max_position_std: float = .60
+    near_command_slew_xy: float = .60
+    near_command_slew_z: float = .30
+    near_unknown_grace_seconds: float = 2.0
 
     def to_dict(self):
         return asdict(self)

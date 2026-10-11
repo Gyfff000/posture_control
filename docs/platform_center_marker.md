@@ -2,6 +2,8 @@
 
 更新日期：2026-10-11。
 
+最新扩展：[近距离中心保持与小幅动作](near_landing_assist.md)。启用 `--near-landing-assist` 时，满足可靠近距离条件后预测最多 8 秒，并使用缓慢的置信度衰减、估计反馈及动作约束；下面的 2 秒规则描述未启用该扩展的通用模式。训练先在 15071 步保存停止，检查完成并收到用户明确开始指令后，已恢复到 `runs/smooth_near_20261011_141534`。
+
 基于文献：**Autonomous Landing on a Moving Platform Using Vision-Based Deep Reinforcement Learning**，Pawel Ladosz 等，IEEE RA-L 2024，DOI：[10.1109/LRA.2024.3379837](https://doi.org/10.1109/LRA.2024.3379837)。以下是本仓库新增的辅助训练实验，属于对原方法的改动。
 
 ## 1. 什么时候预测

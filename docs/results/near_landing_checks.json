@@ -1,0 +1,16 @@
+{
+  "near_prediction_valid_after_three_seconds": true,
+  "confidence_at_three_seconds": 0.45904777235447225,
+  "plane_height_not_extrapolated": true,
+  "bounded_prediction_still_expires": true,
+  "large_alternating_requests_constrained": true,
+  "max_near_xy_command_change_m_s": 0.02,
+  "near_relative_correction_limit_m_s": 0.10597667638483965,
+  "estimate_expiry_does_not_restore_large_actions": true,
+  "centering_and_relative_speed_reward": true,
+  "headless_control_integration": true,
+  "executed_command_memory_correct": true,
+  "policy_action_differs_from_executed_command": true,
+  "optimizer_or_training_called": false,
+  "status": "passed"
+}
