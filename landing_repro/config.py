@@ -19,6 +19,7 @@ class EnvConfig:
     platform_speed_noise: float = .30
     platform_top: float = 0.3
     camera_fov: float = 90.0
+    center_camera_size: int = 84
     camera_offset_x: float = 0.045
     camera_offset_z: float = -0.008
     camera_near: float = 0.001

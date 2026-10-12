@@ -1,16 +1,21 @@
 """Validated height curriculum; height is measured above the platform deck."""
 from dataclasses import replace
+import math
 
-HEIGHT_LEVELS = (1.5, 2.0, 2.5, 3.0, 4.0, 5.0)
+HEIGHT_LEVELS = (1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 15.0)
 
 
 def height_config(config, level):
     if not 0 <= level < len(HEIGHT_LEVELS):
         raise ValueError('Height level out of range')
     # Keep horizontal offsets, platform motion and control settings unchanged.
-    # A common 60-second horizon allows the higher starts time to approach.
-    return replace(config, initial_height=HEIGHT_LEVELS[level], offset_z=.3,
-                   episode_seconds=60.)
+    # Allow descent at 0.25 m/s plus 20 s for alignment; preserve low stages.
+    height=HEIGHT_LEVELS[level]
+    horizon=max(60.,float(math.ceil((height+.3)/.25+20.)))
+    # The actor still receives 84x84; this cap applies to auxiliary RGB only.
+    auxiliary_cap=84 if height<3. else int(math.ceil((height+.3)*56/84)*84)
+    return replace(config, initial_height=height, offset_z=.3,
+                   episode_seconds=horizon, center_camera_size=auxiliary_cap)
 
 
 def height_promotion_ready(validations, phase, level, required_episodes=20):

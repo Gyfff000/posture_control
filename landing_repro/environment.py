@@ -197,6 +197,17 @@ class MovingPlatformLanding(gym.Env):
                                              physicsClientId=self.client)
         self.rgb = np.asarray(rgba, np.uint8).reshape(84, 84, 4)[..., :3]
         self.seg = np.asarray(seg, np.int32).reshape(84, 84)
+        # Camera placement uses own pose and the calibrated horizontal plane.
+        # Auxiliary sensing is separate: the actor's raw 84x84 image is unchanged.
+        height=max(0.,float(state[2]-self.cfg.platform_top))
+        desired=84 if height<=2.5 else int(np.ceil(height*56/84)*84)
+        size=min(self.cfg.center_camera_size,max(84,desired))
+        if self.cfg.prediction_guidance and size>84:
+            _,_,center_rgba,_,_=p.getCameraImage(size,size,self.camera_view,projection,
+                renderer=p.ER_TINY_RENDERER,physicsClientId=self.client)
+            self.center_rgb=np.asarray(center_rgba,np.uint8).reshape(size,size,4)[...,:3]
+        else:
+            self.center_rgb=self.rgb
         self.visible_count = int(np.count_nonzero((self.seg & ((1 << 24) - 1)) == self.platform_id))
         self.visible = self.visible_count >= self.cfg.visible_pixels
         self.frames.append(cv2.cvtColor(self.rgb, cv2.COLOR_RGB2GRAY))

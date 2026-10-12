@@ -296,7 +296,7 @@ def train(args):
     task_changed=any(bool(source_config.get(key,False))!=getattr(config,key) for key in ('prediction_guidance','near_landing_assist','terminal_finish_enabled'))
     task_changed=task_changed or any(source_config.get(key,getattr(config,key))!=getattr(config,key)
         for key in ('platform_motion','platform_speed_min','platform_speed_max','platform_accel_max',
-                    'platform_turn_rate_degrees','platform_speed_noise','initial_height','offset_xy','offset_z','episode_seconds'))
+                    'platform_turn_rate_degrees','platform_speed_noise','initial_height','offset_xy','offset_z','episode_seconds','center_camera_size'))
     task_changed=task_changed or bool(source_training.get('motion_curriculum',False))!=args.motion_curriculum
     task_changed=task_changed or bool(source_training.get('height_curriculum',False))!=args.height_curriculum
     task_changed=task_changed or source_config.get('near_controller_version',1)!=config.near_controller_version
@@ -348,6 +348,7 @@ def train(args):
         (out/'config.json').write_text(json.dumps(dict(method=METHOD,arguments={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
             environment=config.to_dict(),source_checkpoint=str(args.checkpoint),motion_phase=motion_phase,
             height_curriculum=args.height_curriculum,height_level=height_level if args.height_curriculum else None,
+            height_schedule=list(HEIGHT_LEVELS) if args.height_curriculum else None,
             stop_rule='3 consecutive validations of at least 20 flights: success >=80%, soft >=60%, success-rate range <=5 percentage points. Height curriculum holds platform phase fixed and promotes height only.',
             task_changed=task_changed,
             note='Operational stopping rule, not proof of convergence; teacher labels train only. Changed reward tasks reset validation ranking; old best is a separate baseline.'),indent=2))
@@ -356,6 +357,7 @@ def train(args):
         agent.save(out/name,config,completed,dict(method=METHOD,stage=2 if args.motion_curriculum and motion_phase==3 else args.stage,
             motion_curriculum=args.motion_curriculum,motion_phase=motion_phase,
             height_curriculum=args.height_curriculum,height_level=height_level if args.height_curriculum else None,
+            height_schedule=list(HEIGHT_LEVELS) if args.height_curriculum else None,
             source_checkpoint=str(args.checkpoint),source_metadata=source.get('training_metadata'),
             stable_validations=stable,episode=episode,training_successes=successes,
             soft_landings=softs,exact_resume=False))
@@ -482,6 +484,7 @@ def train(args):
                 save('best.pt')
         final=dict(steps=completed,updates=agent.updates,episodes_completed=episode,motion_phase=motion_phase,
             height_curriculum=args.height_curriculum,height_level=height_level if args.height_curriculum else None,
+            height_schedule=list(HEIGHT_LEVELS) if args.height_curriculum else None,
             initial_height_m=config.initial_height,
             training_successes=successes,soft_landings=softs,stop_reason=reason,
             wall_seconds=time.monotonic()-start,method=METHOD,status='stopped' if reason=='user_stopped' else 'completed')

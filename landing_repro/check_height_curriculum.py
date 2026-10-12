@@ -11,15 +11,17 @@ checked=[]
 for level,h in enumerate(HEIGHT_LEVELS):
     cfg=height_config(base,level)
     changes={k for k,v in asdict(cfg).items() if v!=asdict(base)[k]}
-    assert changes <= {'initial_height','offset_z','episode_seconds'}, changes
+    assert changes <= {'initial_height','offset_z','episode_seconds','center_camera_size'}, changes
     assert cfg.near_partial_tracking and cfg.near_controller_version==2
     env=MovingPlatformLanding(cfg,gui=False)
     try:
         for seed in (301,302):
             obs,_=env.reset(seed=seed)
+            assert obs['pixels'].shape==(3,84,84)
             actual=float(env.state[2]-cfg.platform_top)
             assert abs(actual-h)<=.300001,(level,actual,h)
-        checked.append({'level':level,'height_m':h,'actual_height_m':actual})
+        checked.append({'level':level,'height_m':h,'actual_height_m':actual,
+                        'episode_seconds':cfg.episode_seconds,'auxiliary_cap':cfg.center_camera_size})
     finally:
         env.close()
 

@@ -1,0 +1,180 @@
+{
+  "status": "passed",
+  "note": "Initialization/calibration and resolution-switch checks only; not landing success rates",
+  "rows": [
+    {
+      "height_m": 3.0,
+      "seed": 301,
+      "auxiliary_size": 168,
+      "center_error_m": 0.1530048349096433,
+      "confidence": 0.5888349514563107
+    },
+    {
+      "height_m": 3.0,
+      "seed": 302,
+      "auxiliary_size": 252,
+      "center_error_m": 0.1721826723696949,
+      "confidence": 0.621832358674464
+    },
+    {
+      "height_m": 3.0,
+      "seed": 303,
+      "auxiliary_size": 252,
+      "center_error_m": 0.13867140764154257,
+      "confidence": 0.6638190954773869
+    },
+    {
+      "height_m": 4.0,
+      "seed": 301,
+      "auxiliary_size": 252,
+      "center_error_m": 0.17528536956676566,
+      "confidence": 0.6392373306573006
+    },
+    {
+      "height_m": 4.0,
+      "seed": 302,
+      "auxiliary_size": 252,
+      "center_error_m": 0.2341885581176172,
+      "confidence": 0.6074498567335244
+    },
+    {
+      "height_m": 4.0,
+      "seed": 303,
+      "auxiliary_size": 252,
+      "center_error_m": 0.2169993345168064,
+      "confidence": 0.5410830999066293
+    },
+    {
+      "height_m": 5.0,
+      "seed": 301,
+      "auxiliary_size": 336,
+      "center_error_m": 0.23223821915271708,
+      "confidence": 0.6117876278616659
+    },
+    {
+      "height_m": 5.0,
+      "seed": 302,
+      "auxiliary_size": 336,
+      "center_error_m": 0.2060772248421424,
+      "confidence": 0.5759312320916905
+    },
+    {
+      "height_m": 5.0,
+      "seed": 303,
+      "auxiliary_size": 336,
+      "center_error_m": 0.20475906416116907,
+      "confidence": 0.6227069905800694
+    },
+    {
+      "height_m": 6.0,
+      "seed": 301,
+      "auxiliary_size": 336,
+      "center_error_m": 0.2913317121446699,
+      "confidence": 0.5572162540868753
+    },
+    {
+      "height_m": 6.0,
+      "seed": 302,
+      "auxiliary_size": 420,
+      "center_error_m": 0.26198500622004284,
+      "confidence": 0.5863591756624141
+    },
+    {
+      "height_m": 6.0,
+      "seed": 303,
+      "auxiliary_size": 420,
+      "center_error_m": 0.24853620215000433,
+      "confidence": 0.5798279158699808
+    },
+    {
+      "height_m": 8.0,
+      "seed": 301,
+      "auxiliary_size": 504,
+      "center_error_m": 0.36913284523276124,
+      "confidence": 0.6359561752988048
+    },
+    {
+      "height_m": 8.0,
+      "seed": 302,
+      "auxiliary_size": 504,
+      "center_error_m": 0.27658734477981606,
+      "confidence": 0.6139742319127849
+    },
+    {
+      "height_m": 8.0,
+      "seed": 303,
+      "auxiliary_size": 504,
+      "center_error_m": 0.3694222826517988,
+      "confidence": 0.488898756660746
+    },
+    {
+      "height_m": 10.0,
+      "seed": 301,
+      "auxiliary_size": 588,
+      "center_error_m": 0.7307223566482567,
+      "confidence": 0.5087155963302752
+    },
+    {
+      "height_m": 10.0,
+      "seed": 302,
+      "auxiliary_size": 588,
+      "center_error_m": 0.4544909032265839,
+      "confidence": 0.5758468335787923
+    },
+    {
+      "height_m": 10.0,
+      "seed": 303,
+      "auxiliary_size": 588,
+      "center_error_m": 0.2595746776582093,
+      "confidence": 0.6577868852459017
+    },
+    {
+      "height_m": 12.0,
+      "seed": 301,
+      "auxiliary_size": 672,
+      "center_error_m": 0.49741053443186667,
+      "confidence": 0.5767934520943668
+    },
+    {
+      "height_m": 12.0,
+      "seed": 302,
+      "auxiliary_size": 756,
+      "center_error_m": 0.4911146913686283,
+      "confidence": 0.6515227159261109
+    },
+    {
+      "height_m": 12.0,
+      "seed": 303,
+      "auxiliary_size": 756,
+      "center_error_m": 0.4042182598325642,
+      "confidence": 0.6200488997555013
+    },
+    {
+      "height_m": 15.0,
+      "seed": 301,
+      "auxiliary_size": 840,
+      "center_error_m": 0.4818657491831813,
+      "confidence": 0.6454363089267804
+    },
+    {
+      "height_m": 15.0,
+      "seed": 302,
+      "auxiliary_size": 924,
+      "center_error_m": 0.40044200589649104,
+      "confidence": 0.6478019201616978
+    },
+    {
+      "height_m": 15.0,
+      "seed": 303,
+      "auxiliary_size": 924,
+      "center_error_m": 0.7437111658616534,
+      "confidence": 0.5447726207219878
+    }
+  ],
+  "actor_shape": [
+    3,
+    84,
+    84
+  ],
+  "resolution_switches": 3
+}

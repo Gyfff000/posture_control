@@ -220,7 +220,12 @@ def estimate_center(env):
             env.cfg.center_confidence_tau,env.cfg.center_min_confidence)
     tracker=env._center_tracker
     state=env.state
-    result=tracker.update(env.rgb,state[:3],state[3:7],env.cfg,env.elapsed)
+    rgb=getattr(env,'center_rgb',env.rgb)
+    # Optical flow must not pair frames with different resolutions.
+    if tracker.partial_tracker.gray is not None and tracker.partial_tracker.gray.shape!=rgb.shape[:2]:
+        from .partial_marker import PartialMarkerTracker
+        tracker.partial_tracker=PartialMarkerTracker()
+    result=tracker.update(rgb,state[:3],state[3:7],env.cfg,env.elapsed)
     if env.cfg.terminal_finish_enabled and result['position'] is None and hasattr(env,'near_guard'):
         terminal=env.near_guard.terminal_estimate()
         if terminal is not None:
