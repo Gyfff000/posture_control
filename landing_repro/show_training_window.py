@@ -18,7 +18,8 @@ def main():
         if not request.exists():
             print('Training window restored and raised by the running monitor.')
             try:
-                from .x11_window import restore_bullet_window
+                from .x11_window import restore_bullet_window,restore_training_window
+                print('Training surface remapped:', restore_training_window())
                 print('PyBullet restore requested:', restore_bullet_window())
             except (OSError, RuntimeError) as error:
                 print('Training continues; could not restore the separate 3D window:', error)

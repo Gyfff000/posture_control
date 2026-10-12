@@ -4,7 +4,7 @@ import ctypes.util
 import time
 
 
-def restore_bullet_window():
+def restore_application_window(prefixes, position=(20,20)):
     x = c.CDLL(ctypes.util.find_library('X11'))
     display = c.c_void_p
     window = c.c_ulong
@@ -47,7 +47,7 @@ def restore_bullet_window():
         name = c.c_void_p()
         if x.XFetchName(d, w, c.byref(name)) and name.value:
             try:
-                if c.string_at(name).startswith(b'Bullet Physics ExampleBrowser'):
+                if c.string_at(name).startswith(prefixes):
                     matches.append(w)
             finally:
                 x.XFree(name)
@@ -64,7 +64,7 @@ def restore_bullet_window():
     try:
         visit(root)
         if len(matches) != 1:
-            raise RuntimeError(f'Expected one PyBullet window, found {len(matches)}')
+            raise RuntimeError(f'Expected one matching application window, found {len(matches)}')
         w = matches[0]
         # Re-map an offscreen WSLg surface so the compositor also recreates its
         # Windows presentation. Raising an already mapped surface is insufficient.
@@ -72,7 +72,7 @@ def restore_bullet_window():
         x.XSync(d, 0)
         time.sleep(.2)
         x.XMapRaised(d, w)
-        x.XMoveWindow(d, w, 80, 80)
+        x.XMoveWindow(d, w, *position)
         event = Event()
         event.client.type = 33  # ClientMessage
         event.client.display = d
@@ -85,3 +85,13 @@ def restore_bullet_window():
         return hex(w)
     finally:
         x.XCloseDisplay(d)
+
+
+def restore_bullet_window():
+    return restore_application_window((b'Bullet Physics ExampleBrowser',),(80,80))
+
+
+def restore_training_window():
+    return restore_application_window((b'UAV LANDING TRAINING',
+        b'SMOOTH VISUAL LANDING TRAINING', b'LIVE DrQ-v2 TRAINING',
+        b'ASSISTED VISUAL MODEL TRAINING', b'Saved DrQ-v2 model test'),(20,20))
