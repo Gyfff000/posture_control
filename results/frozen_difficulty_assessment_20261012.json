@@ -1,0 +1,738 @@
+{
+  "checkpoint": "runs/height_setup_20261012_160318/selected_best.pt",
+  "checkpoint_steps": 155000,
+  "sha256": "6212ce55b138268cbffc389d90f99be57adb1af7840e3afc17b01a31ab75c664",
+  "optimization_updates": 0,
+  "method": "Assisted visual DrQ-v2 + command memory + smoothness losses + bounded command jerk + soft-contact shaping",
+  "note": "Same selected checkpoint, frozen mean actions. Fixed validation seeds, not a statistically independent test set. Phase 3 is a transfer test without prior phase-3 training and has a higher initial height.",
+  "historical_validation_caveat": "Old GUI callbacks repeatedly advanced the estimator on identical frames. Fixed in center_marker.update_center_marker; this headless assessment never invokes those callbacks.",
+  "results": [
+    {
+      "phase": 0,
+      "episodes": 20,
+      "successes": 20,
+      "success_rate": 1.0,
+      "soft_landings": 20,
+      "soft_rate": 1.0,
+      "height_above_deck_m": 1.5,
+      "height_jitter_m": 0.3,
+      "platform_motion": "constant",
+      "platform_speed_min": 0.0,
+      "platform_speed_max": 0.3,
+      "episode_seconds": 40.0,
+      "mean_success_xy_error_m": 0.0343640333213196,
+      "mean_success_time_s": 9.39500000000005,
+      "events": {
+        "success": 20
+      },
+      "rows": [
+        {
+          "seed": 80001,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.02119606400809714,
+          "time_s": 10.316666666666759
+        },
+        {
+          "seed": 80002,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.02211720947831791,
+          "time_s": 12.216666666666853
+        },
+        {
+          "seed": 80003,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.019615988751406632,
+          "time_s": 10.500000000000101
+        },
+        {
+          "seed": 80004,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.086096792372083,
+          "time_s": 9.533333333333387
+        },
+        {
+          "seed": 80005,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.023703496026069963,
+          "time_s": 10.233333333333421
+        },
+        {
+          "seed": 80006,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.01829247144953511,
+          "time_s": 8.216666666666654
+        },
+        {
+          "seed": 80007,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.030664395850495702,
+          "time_s": 9.866666666666736
+        },
+        {
+          "seed": 80008,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.01924424610342055,
+          "time_s": 8.016666666666644
+        },
+        {
+          "seed": 80009,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.0331329051321919,
+          "time_s": 8.58333333333334
+        },
+        {
+          "seed": 80010,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.03925113813891413,
+          "time_s": 11.033333333333461
+        },
+        {
+          "seed": 80011,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.0605965925387797,
+          "time_s": 9.683333333333394
+        },
+        {
+          "seed": 80012,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.03712097553768893,
+          "time_s": 9.666666666666726
+        },
+        {
+          "seed": 80013,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.058863761054589306,
+          "time_s": 8.433333333333332
+        },
+        {
+          "seed": 80014,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.015964629776959807,
+          "time_s": 9.100000000000032
+        },
+        {
+          "seed": 80015,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.025323665765370193,
+          "time_s": 7.4666666666666455
+        },
+        {
+          "seed": 80016,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.03757644485328233,
+          "time_s": 9.733333333333396
+        },
+        {
+          "seed": 80017,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.029755351020059245,
+          "time_s": 7.716666666666645
+        },
+        {
+          "seed": 80018,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.041888736868439254,
+          "time_s": 7.9333333333333105
+        },
+        {
+          "seed": 80019,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.054552119118324874,
+          "time_s": 8.78333333333335
+        },
+        {
+          "seed": 80020,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.012323682582366291,
+          "time_s": 10.866666666666786
+        }
+      ]
+    },
+    {
+      "phase": 1,
+      "episodes": 20,
+      "successes": 20,
+      "success_rate": 1.0,
+      "soft_landings": 20,
+      "soft_rate": 1.0,
+      "height_above_deck_m": 1.5,
+      "height_jitter_m": 0.3,
+      "platform_motion": "variable_speed",
+      "platform_speed_min": 0.08,
+      "platform_speed_max": 0.35,
+      "episode_seconds": 40.0,
+      "mean_success_xy_error_m": 0.08955668805186501,
+      "mean_success_time_s": 9.465833333333384,
+      "events": {
+        "success": 20
+      },
+      "rows": [
+        {
+          "seed": 81001,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.13728300342391958,
+          "time_s": 8.066666666666647
+        },
+        {
+          "seed": 81002,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.059888128219175746,
+          "time_s": 9.166666666666702
+        },
+        {
+          "seed": 81003,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.26457825612362557,
+          "time_s": 9.950000000000074
+        },
+        {
+          "seed": 81004,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.03009747408714314,
+          "time_s": 10.366666666666761
+        },
+        {
+          "seed": 81005,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.055700384631448725,
+          "time_s": 8.349999999999994
+        },
+        {
+          "seed": 81006,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.04550828840374025,
+          "time_s": 9.700000000000061
+        },
+        {
+          "seed": 81007,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.036277403082262516,
+          "time_s": 8.166666666666652
+        },
+        {
+          "seed": 81008,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.11845858025999621,
+          "time_s": 9.616666666666724
+        },
+        {
+          "seed": 81009,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.1096786785275863,
+          "time_s": 8.083333333333314
+        },
+        {
+          "seed": 81010,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.11023305483115196,
+          "time_s": 9.800000000000066
+        },
+        {
+          "seed": 81011,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.07265092811537503,
+          "time_s": 11.800000000000166
+        },
+        {
+          "seed": 81012,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.15249086825554206,
+          "time_s": 7.683333333333311
+        },
+        {
+          "seed": 81013,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.0651235371490509,
+          "time_s": 9.300000000000042
+        },
+        {
+          "seed": 81014,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.1497648575605158,
+          "time_s": 9.500000000000052
+        },
+        {
+          "seed": 81015,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.04261684722926292,
+          "time_s": 10.750000000000114
+        },
+        {
+          "seed": 81016,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.09602685333253715,
+          "time_s": 10.033333333333411
+        },
+        {
+          "seed": 81017,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.044147127100528274,
+          "time_s": 10.933333333333456
+        },
+        {
+          "seed": 81018,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.06587813153872686,
+          "time_s": 8.616666666666674
+        },
+        {
+          "seed": 81019,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.045396858054598414,
+          "time_s": 9.133333333333367
+        },
+        {
+          "seed": 81020,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.08933450111111282,
+          "time_s": 10.300000000000091
+        }
+      ]
+    },
+    {
+      "phase": 2,
+      "episodes": 20,
+      "successes": 13,
+      "success_rate": 0.65,
+      "soft_landings": 13,
+      "soft_rate": 0.65,
+      "height_above_deck_m": 1.5,
+      "height_jitter_m": 0.3,
+      "platform_motion": "random_bspline",
+      "platform_speed_min": 0.1,
+      "platform_speed_max": 0.4,
+      "episode_seconds": 40.0,
+      "mean_success_xy_error_m": 0.16645428827166311,
+      "mean_success_time_s": 9.558974358974414,
+      "events": {
+        "near_estimate_lost": 6,
+        "success": 13,
+        "platform_edge": 1
+      },
+      "rows": [
+        {
+          "seed": 82001,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.2921772596740322,
+          "time_s": 10.333333333333426
+        },
+        {
+          "seed": 82002,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.054569177757260605,
+          "time_s": 8.966666666666692
+        },
+        {
+          "seed": 82003,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.20694751264836062,
+          "time_s": 8.866666666666687
+        },
+        {
+          "seed": 82004,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.2964887060958843,
+          "time_s": 11.466666666666816
+        },
+        {
+          "seed": 82005,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.08891520800104477,
+          "time_s": 9.666666666666726
+        },
+        {
+          "seed": 82006,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.41094996450227067,
+          "time_s": 9.900000000000071
+        },
+        {
+          "seed": 82007,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.12917817133440754,
+          "time_s": 11.850000000000168
+        },
+        {
+          "seed": 82008,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.1791864768158806,
+          "time_s": 9.916666666666739
+        },
+        {
+          "seed": 82009,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.272365290202337,
+          "time_s": 9.783333333333399
+        },
+        {
+          "seed": 82010,
+          "event": "platform_edge",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.4861242241225707,
+          "time_s": 9.216666666666704
+        },
+        {
+          "seed": 82011,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.2448315528906343,
+          "time_s": 10.066666666666746
+        },
+        {
+          "seed": 82012,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.27164339466261106,
+          "time_s": 8.85000000000002
+        },
+        {
+          "seed": 82013,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.7671861940325938,
+          "time_s": 10.566666666666771
+        },
+        {
+          "seed": 82014,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.18336461464911774,
+          "time_s": 7.683333333333311
+        },
+        {
+          "seed": 82015,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.13848880963079072,
+          "time_s": 9.283333333333374
+        },
+        {
+          "seed": 82016,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.15752828596274812,
+          "time_s": 9.883333333333404
+        },
+        {
+          "seed": 82017,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.1390519644212094,
+          "time_s": 10.183333333333419
+        },
+        {
+          "seed": 82018,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.2705498753295673,
+          "time_s": 11.250000000000139
+        },
+        {
+          "seed": 82019,
+          "event": "success",
+          "success": true,
+          "soft_landing": true,
+          "xy_error_m": 0.07211696611628501,
+          "time_s": 8.083333333333314
+        },
+        {
+          "seed": 82020,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.6427070169392393,
+          "time_s": 10.700000000000111
+        }
+      ]
+    },
+    {
+      "phase": 3,
+      "episodes": 20,
+      "successes": 0,
+      "success_rate": 0.0,
+      "soft_landings": 0,
+      "soft_rate": 0.0,
+      "height_above_deck_m": 2.5,
+      "height_jitter_m": 0.5,
+      "platform_motion": "random_bspline",
+      "platform_speed_min": 0.1,
+      "platform_speed_max": 0.5,
+      "episode_seconds": 40.0,
+      "mean_success_xy_error_m": null,
+      "mean_success_time_s": null,
+      "events": {
+        "near_estimate_lost": 16,
+        "lost_view": 4
+      },
+      "rows": [
+        {
+          "seed": 83001,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.6773198202118614,
+          "time_s": 13.96666666666694
+        },
+        {
+          "seed": 83002,
+          "event": "lost_view",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 1.0376897943942454,
+          "time_s": 13.666666666666925
+        },
+        {
+          "seed": 83003,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.23062978295022024,
+          "time_s": 15.666666666667025
+        },
+        {
+          "seed": 83004,
+          "event": "lost_view",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 3.344558201320754,
+          "time_s": 4.699999999999989
+        },
+        {
+          "seed": 83005,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.9218269232815898,
+          "time_s": 17.53333333333362
+        },
+        {
+          "seed": 83006,
+          "event": "lost_view",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 1.3913892301866235,
+          "time_s": 15.30000000000034
+        },
+        {
+          "seed": 83007,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.40663974872887726,
+          "time_s": 13.30000000000024
+        },
+        {
+          "seed": 83008,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.5908971494238298,
+          "time_s": 15.76666666666703
+        },
+        {
+          "seed": 83009,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.6154854518449858,
+          "time_s": 14.63333333333364
+        },
+        {
+          "seed": 83010,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.3929600926952981,
+          "time_s": 16.733333333333665
+        },
+        {
+          "seed": 83011,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.2815067118546688,
+          "time_s": 12.23333333333352
+        },
+        {
+          "seed": 83012,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.16410019657126984,
+          "time_s": 16.933333333333653
+        },
+        {
+          "seed": 83013,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.970694155175728,
+          "time_s": 12.43333333333353
+        },
+        {
+          "seed": 83014,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.4642952294715617,
+          "time_s": 18.133333333333585
+        },
+        {
+          "seed": 83015,
+          "event": "lost_view",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.9066749982785464,
+          "time_s": 12.56666666666687
+        },
+        {
+          "seed": 83016,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.18300173817507467,
+          "time_s": 15.600000000000355
+        },
+        {
+          "seed": 83017,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.28374236606579795,
+          "time_s": 16.36666666666702
+        },
+        {
+          "seed": 83018,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.438062845030253,
+          "time_s": 14.533333333333635
+        },
+        {
+          "seed": 83019,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.2329500697830346,
+          "time_s": 12.5000000000002
+        },
+        {
+          "seed": 83020,
+          "event": "near_estimate_lost",
+          "success": false,
+          "soft_landing": false,
+          "xy_error_m": 0.26353003015029663,
+          "time_s": 15.90000000000037
+        }
+      ]
+    }
+  ]
+}

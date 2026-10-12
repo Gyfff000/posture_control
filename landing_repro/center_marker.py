@@ -244,7 +244,13 @@ def prediction_progress(before_position,after_position,previous_estimate,current
 
 
 def update_center_marker(env):
-    result=estimate_center(env)
+    # Rendering must not assimilate the same camera frame a second time.
+    # _observe() already advanced the estimator exactly once for this step.
+    # Older display-only configurations need one cached estimate per RGB frame.
+    if not env.cfg.prediction_guidance and getattr(env,'_display_estimate_frame',None) is not env.rgb:
+        env.center_estimate=estimate_center(env)
+        env._display_estimate_frame=env.rgb
+    result=env.center_estimate
     tracker=env._center_tracker
     if env.gui:
         if result['position'] is None:

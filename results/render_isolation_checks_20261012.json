@@ -1,0 +1,7 @@
+{
+  "status": "passed",
+  "steps": 30,
+  "display_refreshes": 90,
+  "inspection_frames": 6,
+  "check": "Repeated rendering leaves estimator, observations, physics and reward unchanged"
+}

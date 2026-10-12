@@ -167,6 +167,9 @@ class LiveTraining:
         status['near_center_reward']=info.get('near_center_reward',0.)
         status['executed_normalized_action']=info.get('executed_normalized_action',action.tolist())
         status['platform_motion']=env.cfg.platform_motion
+        status['height_level']=getattr(self,'height_level',None)
+        status['height_target_m']=getattr(self,'height_target',env.cfg.initial_height)
+        status['flight_initial_height_m']=env.cfg.initial_height
         status['platform_speed_m_s']=float(np.linalg.norm(env.platform_velocity[:2]))
         status['platform_yaw']=env.platform_yaw
         if force or now - self.last_status >= 1.:

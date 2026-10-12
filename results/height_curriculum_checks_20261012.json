@@ -1,0 +1,36 @@
+{
+  "status": "passed",
+  "height_resets": [
+    {
+      "level": 0,
+      "height_m": 1.5,
+      "actual_height_m": 1.7989618789692672
+    },
+    {
+      "level": 1,
+      "height_m": 2.0,
+      "actual_height_m": 2.2989618789692674
+    },
+    {
+      "level": 2,
+      "height_m": 2.5,
+      "actual_height_m": 2.7989618789692674
+    },
+    {
+      "level": 3,
+      "height_m": 3.0,
+      "actual_height_m": 3.2989618789692674
+    },
+    {
+      "level": 4,
+      "height_m": 4.0,
+      "actual_height_m": 4.298961878969267
+    },
+    {
+      "level": 5,
+      "height_m": 5.0,
+      "actual_height_m": 5.298961878969267
+    }
+  ],
+  "promotion_checks": 8
+}

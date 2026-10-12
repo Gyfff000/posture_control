@@ -20,6 +20,7 @@ from .config import AgentConfig
 from .environment import LIMITS, MovingPlatformLanding
 from .guided import Demonstrations, clone_step, stage_config
 from .motion_curriculum import PHASE_NAMES, motion_config, promotion_ready
+from .height_curriculum import HEIGHT_LEVELS, height_config, height_promotion_ready
 
 METHOD = 'Assisted visual DrQ-v2 + command memory + smoothness losses + bounded command jerk + soft-contact shaping'
 
@@ -269,6 +270,12 @@ def train(args):
     torch.manual_seed(args.seed)
     source_config=source.get('env_config',{})
     source_training=source.get('training_metadata') or {}
+    args.height_curriculum=bool(args.height_curriculum or source_training.get('height_curriculum',False))
+    height_level=(source_training.get('height_level') if source_training.get('height_level') is not None else 1) if args.height_level is None else args.height_level
+    if args.height_curriculum and not args.motion_curriculum:
+        raise ValueError('Height curriculum requires --motion-curriculum')
+    if args.height_level is not None and not args.height_curriculum:
+        raise ValueError('--height-level requires --height-curriculum')
     motion_phase=(source_training.get('motion_phase',0) if args.motion_phase is None else args.motion_phase)
     if not args.motion_curriculum and args.motion_phase is not None:
         raise ValueError('--motion-phase requires --motion-curriculum')
@@ -278,15 +285,20 @@ def train(args):
     near_enabled=source_config.get('near_landing_assist',False) if args.near_landing_assist is None else args.near_landing_assist
     terminal_enabled=source_config.get('terminal_finish_enabled',False) if args.terminal_finish_assist is None else args.terminal_finish_assist
     config = smooth_config(args.stage,prediction_enabled,near_enabled,terminal_enabled)
-    def phase_config(phase):
-        return motion_config(smooth_config,phase,prediction_enabled,near_enabled,terminal_enabled)
+    def phase_config(phase,level=None):
+        cfg=motion_config(smooth_config,phase,prediction_enabled,near_enabled,terminal_enabled)
+        return height_config(cfg,height_level if level is None else level) if args.height_curriculum else cfg
+    def window_title():
+        height_text=f" | Height {HEIGHT_LEVELS[height_level]:.1f} +/- 0.3 m above deck" if args.height_curriculum else ""
+        return f"UAV LANDING TRAINING | Motion {motion_phase} | {PHASE_NAMES[motion_phase]}{height_text}"
     if args.motion_curriculum:
         config=phase_config(motion_phase)
     task_changed=any(bool(source_config.get(key,False))!=getattr(config,key) for key in ('prediction_guidance','near_landing_assist','terminal_finish_enabled'))
     task_changed=task_changed or any(source_config.get(key,getattr(config,key))!=getattr(config,key)
         for key in ('platform_motion','platform_speed_min','platform_speed_max','platform_accel_max',
-                    'platform_turn_rate_degrees','platform_speed_noise','initial_height','offset_xy','offset_z'))
+                    'platform_turn_rate_degrees','platform_speed_noise','initial_height','offset_xy','offset_z','episode_seconds'))
     task_changed=task_changed or bool(source_training.get('motion_curriculum',False))!=args.motion_curriculum
+    task_changed=task_changed or bool(source_training.get('height_curriculum',False))!=args.height_curriculum
     task_changed=task_changed or source_config.get('near_controller_version',1)!=config.near_controller_version
     task_changed=task_changed or bool(source_config.get('near_partial_tracking',False))!=config.near_partial_tracking
     env = MovingPlatformLanding(config,gui=args.gui)
@@ -296,7 +308,7 @@ def train(args):
         panel = LiveTraining(out)
         panel.root.title('SMOOTH VISUAL LANDING TRAINING | new model | not pure paper DrQ')
         if args.motion_curriculum:
-            panel.root.title(f'UAV LANDING TRAINING | Motion {motion_phase} | {PHASE_NAMES[motion_phase]}')
+            panel.root.title(window_title())
         panel.heading.configure(text='SMOOTH VISUAL LANDING - LEARNING IN PROGRESS')
         panel.focus = 'overview'
         panel.training_total = args.steps
@@ -323,7 +335,8 @@ def train(args):
         if (args.resume_run/'validations.json').exists():
             validations=json.loads((args.resume_run/'validations.json').read_text())
             ranked=[(v['successes'],v['soft_landings'],-v['jerk_rms_m_s3_mean']) for v in validations
-                    if v['episodes']==args.eval_episodes and (not args.motion_curriculum or v.get('motion_phase',0)==motion_phase)]
+                    if v['episodes']==args.eval_episodes and (not args.motion_curriculum or v.get('motion_phase',0)==motion_phase)
+                    and (not args.height_curriculum or v.get('height_level')==height_level)]
             if ranked:
                 best=max(ranked)
         if (args.resume_run/'best.pt').exists():
@@ -334,16 +347,19 @@ def train(args):
     def write_config():
         (out/'config.json').write_text(json.dumps(dict(method=METHOD,arguments={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
             environment=config.to_dict(),source_checkpoint=str(args.checkpoint),motion_phase=motion_phase,
-            stop_rule='3 consecutive 20-episode validations: success >=80%, soft >=60%, success-rate range <=5 percentage points; motion curriculum promotes until final phase',
+            height_curriculum=args.height_curriculum,height_level=height_level if args.height_curriculum else None,
+            stop_rule='3 consecutive validations of at least 20 flights: success >=80%, soft >=60%, success-rate range <=5 percentage points. Height curriculum holds platform phase fixed and promotes height only.',
             task_changed=task_changed,
             note='Operational stopping rule, not proof of convergence; teacher labels train only. Changed reward tasks reset validation ranking; old best is a separate baseline.'),indent=2))
     write_config()
     def save(name):
         agent.save(out/name,config,completed,dict(method=METHOD,stage=2 if args.motion_curriculum and motion_phase==3 else args.stage,
             motion_curriculum=args.motion_curriculum,motion_phase=motion_phase,
+            height_curriculum=args.height_curriculum,height_level=height_level if args.height_curriculum else None,
             source_checkpoint=str(args.checkpoint),source_metadata=source.get('training_metadata'),
             stable_validations=stable,episode=episode,training_successes=successes,
             soft_landings=softs,exact_resume=False))
+    save('latest.pt')
     try:
         with (out/'episodes.jsonl').open('w') as log, (out/'metrics.jsonl').open('w') as metric_log:
             for step in range(args.step_offset,args.steps):
@@ -376,14 +392,21 @@ def train(args):
                 if panel:
                     panel.training_step=completed
                     level=(f'Motion {motion_phase}: {PHASE_NAMES[motion_phase]}' if args.motion_curriculum else f'Stage {args.stage}')
+                    if args.height_curriculum:
+                        level+=f' | HEIGHT {config.initial_height:.1f} +/- 0.3m (flight {env.cfg.initial_height:.1f}m)'
                     panel.training_label=f'SMOOTH MODEL TRAINING | {level} | Soft landings {softs}'
+                    panel.height_level=height_level if args.height_curriculum else None
+                    panel.height_target=config.initial_height
                     panel.saved_result.configure(text='30D own state + camera; smoothness losses + command jerk limits + soft-contact target.\n'+('NEAR ASSIST: extended estimate + constrained network commands; hybrid policy/controller.' if config.near_landing_assist else 'Blue = flown path; GREEN/ORANGE = auxiliary estimate/prediction. '+('Confidence-weighted prediction reward ON; estimate is not a policy input.' if config.prediction_guidance else 'Marker display only.')))
                     panel.update(env,completed,args.steps,0,agent.updates,episode,successes,
                         replay.size,ret,action,info,metrics,time.monotonic()-start,force=term or trunc)
                 if term or trunc:
                     episode+=1; successes+=int(info['success']); softs+=int(info['soft_landing'])
                     row=dict(episode=episode,step=completed,motion_phase=motion_phase,
-                             training_motion_phase=motion_phase-1 if args.motion_curriculum and env.cfg is not config else motion_phase,
+                             training_motion_phase=motion_phase-1 if args.motion_curriculum and not args.height_curriculum and env.cfg is not config else motion_phase,
+                             height_level=height_level if args.height_curriculum else None,
+                             training_height_level=height_level-1 if args.height_curriculum and env.cfg is not config else (height_level if args.height_curriculum else None),
+                             initial_height_m=env.cfg.initial_height,
                              platform_motion=env.cfg.platform_motion,**flight.summary(info))
                     flight.save(out/f'train_episode_{episode:04d}.csv')
                     log.write(json.dumps(row)+'\n'); log.flush()
@@ -391,7 +414,10 @@ def train(args):
                     if panel:
                         panel.episode_result(episode,info,ret); panel.hold_result(.4)
                     # One in five flights revisits the previous phase to reduce forgetting.
-                    env.cfg=phase_config(motion_phase-1) if args.motion_curriculum and motion_phase>0 and episode%5==0 else config
+                    if args.height_curriculum:
+                        env.cfg=phase_config(motion_phase,height_level-1) if height_level>0 and episode%5==0 else config
+                    else:
+                        env.cfg=phase_config(motion_phase-1) if args.motion_curriculum and motion_phase>0 and episode%5==0 else config
                     obs,_=env.reset(seed=args.seed*10000+episode+seed_shift)
                     flight=FlightLog(env); ret=0.
                     trail_position=env.state[:3]
@@ -400,9 +426,10 @@ def train(args):
                     print('SMOOTH TRAIN steps',completed,'updates',agent.updates,flush=True)
                 if completed%args.eval_every==0:
                     score=evaluate_flights(agent,config,out/f'validation_{completed}',args.eval_episodes,
-                        80001+1000*motion_phase if args.motion_curriculum else 80001,panel,
-                        f'motion phase {motion_phase} test' if args.motion_curriculum else 'fixed-stage smooth test')
-                    validations.append(dict(step=completed,motion_phase=motion_phase,**score))
+                        (80001+1000*motion_phase+(10000*height_level if args.height_curriculum else 0)) if args.motion_curriculum else 80001,panel,
+                        f'motion {motion_phase}, height {config.initial_height:.1f}m test' if args.motion_curriculum else 'fixed-stage smooth test')
+                    validations.append(dict(step=completed,motion_phase=motion_phase,
+                        height_level=height_level if args.height_curriculum else None,**score))
                     (out/'validations.json').write_text(json.dumps(validations,indent=2))
                     key=(score['successes'],score['soft_landings'],-score['jerk_rms_m_s3_mean']) if score['episodes'] else (-1,-1,float('-inf'))
                     if key>best:
@@ -411,7 +438,24 @@ def train(args):
                     stable=stable+1 if good else 0
                     if panel:
                         panel.heading.configure(text='SMOOTH VISUAL LANDING - LEARNING IN PROGRESS')
-                    if args.motion_curriculum and promotion_ready(validations,motion_phase,args.eval_episodes):
+                    if args.height_curriculum and height_promotion_ready(validations,motion_phase,height_level,args.eval_episodes):
+                        save(f'height_{height_level}_completed.pt')
+                        if height_level==len(HEIGHT_LEVELS)-1:
+                            reason='final_height_level_stable'; break
+                        if (out/'best.pt').exists():
+                            shutil.move(out/'best.pt',out/f'best_height_{height_level}.pt')
+                        height_level+=1; config=phase_config(motion_phase)
+                        stable=0; best=(-1,-1,float('-inf'))
+                        replay=Replay(4000,agent.cfg.n_step,agent.cfg.discount,args.seed+100*height_level)
+                        online=Demonstrations(4000,args.seed+100*height_level+1,30)
+                        env.cfg=config
+                        obs,_=env.reset(seed=args.seed*10000+episode+seed_shift)
+                        flight=FlightLog(env); ret=0.; trail_position=env.state[:3]
+                        write_config(); save('latest.pt')
+                        print('HEIGHT CURRICULUM PROMOTED',height_level,config.initial_height,flush=True)
+                        if panel:
+                            panel.root.title(window_title())
+                    elif args.motion_curriculum and not args.height_curriculum and promotion_ready(validations,motion_phase,args.eval_episodes):
                         save(f'phase_{motion_phase}_completed.pt')
                         if motion_phase==len(PHASE_NAMES)-1:
                             reason='final_motion_phase_stable'; break
@@ -428,7 +472,7 @@ def train(args):
                         write_config(); save('latest.pt')
                         print('MOTION CURRICULUM PROMOTED',motion_phase,PHASE_NAMES[motion_phase],flush=True)
                         if panel:
-                            panel.root.title(f'UAV LANDING TRAINING | Motion {motion_phase} | {PHASE_NAMES[motion_phase]}')
+                            panel.root.title(window_title())
                     elif not args.motion_curriculum and stable>=3:
                         recent=[v['successes']/v['episodes'] for v in validations[-3:]]
                         if max(recent)-min(recent)<=.0500001:
@@ -437,6 +481,8 @@ def train(args):
             if not (out/'best.pt').exists():
                 save('best.pt')
         final=dict(steps=completed,updates=agent.updates,episodes_completed=episode,motion_phase=motion_phase,
+            height_curriculum=args.height_curriculum,height_level=height_level if args.height_curriculum else None,
+            initial_height_m=config.initial_height,
             training_successes=successes,soft_landings=softs,stop_reason=reason,
             wall_seconds=time.monotonic()-start,method=METHOD,status='stopped' if reason=='user_stopped' else 'completed')
         (out/'summary.json').write_text(json.dumps(final,indent=2))
@@ -481,6 +527,8 @@ def main():
             q.add_argument('--stage',type=int,default=1)
             q.add_argument('--motion-curriculum',action='store_true',help='Validate then promote: straight, variable speed, random spline, faster spline')
             q.add_argument('--motion-phase',type=int,choices=range(4),default=None,help='Starting motion phase; omitted inherits checkpoint, otherwise starts at 0')
+            q.add_argument('--height-curriculum',action='store_true',help='Hold motion phase fixed and validate before increasing deck-relative start height; inherited from checkpoint')
+            q.add_argument('--height-level',type=int,choices=range(len(HEIGHT_LEVELS)),default=None,help='Height level; omitted inherits checkpoint or starts at 2m')
             q.add_argument('--steps',type=int,default=60000)
             q.add_argument('--eval-every',type=int,default=5000)
             q.add_argument('--eval-episodes',type=int,default=20)

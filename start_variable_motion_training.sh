@@ -16,6 +16,8 @@ checkpoint="$previous/latest.pt"
 if [[ -f "$previous/interrupted.pt" ]]; then checkpoint="$previous/interrupted.pt"; fi
 checkpoint="${1:-$checkpoint}"
 phase_args=()
+height_args=()
+if [[ "${LANDING_HEIGHT_CURRICULUM:-0}" == "1" ]]; then height_args=(--height-curriculum); fi
 if [[ -n "${2:-}" ]]; then
     if [[ ! "$2" =~ ^[0-3]$ ]]; then printf 'Motion phase must be 0..3.\n'; exit 1; fi
     phase_args=(--motion-phase "$2")
@@ -35,6 +37,6 @@ printf '%s\n' "$out" > runs/current_smooth_training.txt
 printf '%s\n' "$$" > "$out/training.pid"
 exec python -m landing_repro.smooth train --checkpoint "$checkpoint" \
     --data runs/smooth_prepare_seed31/demonstrations.npz --output "$out" \
-    --motion-curriculum "${phase_args[@]}" --steps "$total_steps" --step-offset "$saved_steps" \
+    --motion-curriculum "${phase_args[@]}" "${height_args[@]}" --steps "$total_steps" --step-offset "$saved_steps" \
     --resume-run "$previous" --eval-every 5000 --eval-episodes 20 --seed 41 \
     --prediction-guidance --near-landing-assist --terminal-finish-assist --gui
