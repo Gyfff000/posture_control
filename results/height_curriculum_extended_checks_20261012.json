@@ -31,48 +31,55 @@
     },
     {
       "level": 4,
+      "height_m": 3.5,
+      "actual_height_m": 3.7989618789692674,
+      "episode_seconds": 60.0,
+      "auxiliary_cap": 252
+    },
+    {
+      "level": 5,
       "height_m": 4.0,
       "actual_height_m": 4.298961878969267,
       "episode_seconds": 60.0,
       "auxiliary_cap": 252
     },
     {
-      "level": 5,
+      "level": 6,
       "height_m": 5.0,
       "actual_height_m": 5.298961878969267,
       "episode_seconds": 60.0,
       "auxiliary_cap": 336
     },
     {
-      "level": 6,
+      "level": 7,
       "height_m": 6.0,
       "actual_height_m": 6.298961878969267,
       "episode_seconds": 60.0,
       "auxiliary_cap": 420
     },
     {
-      "level": 7,
+      "level": 8,
       "height_m": 8.0,
       "actual_height_m": 8.298961878969267,
       "episode_seconds": 60.0,
       "auxiliary_cap": 504
     },
     {
-      "level": 8,
+      "level": 9,
       "height_m": 10.0,
       "actual_height_m": 10.298961878969267,
       "episode_seconds": 62.0,
       "auxiliary_cap": 588
     },
     {
-      "level": 9,
+      "level": 10,
       "height_m": 12.0,
       "actual_height_m": 12.298961878969267,
       "episode_seconds": 70.0,
       "auxiliary_cap": 756
     },
     {
-      "level": 10,
+      "level": 11,
       "height_m": 15.0,
       "actual_height_m": 15.298961878969267,
       "episode_seconds": 82.0,

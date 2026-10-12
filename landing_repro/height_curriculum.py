@@ -2,7 +2,7 @@
 from dataclasses import replace
 import math
 
-HEIGHT_LEVELS = (1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 15.0)
+HEIGHT_LEVELS = (1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 15.0)
 
 
 def height_config(config, level):

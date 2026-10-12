@@ -7,7 +7,7 @@ from .smooth import smooth_config
 from .motion_curriculum import motion_config
 from .height_curriculum import HEIGHT_LEVELS,height_config
 rows=[]
-for height in (3.,4.,5.,6.,8.,10.,12.,15.):
+for height in (3.,3.5,4.,5.,6.,8.,10.,12.,15.):
     cfg=height_config(motion_config(smooth_config,2,True,True,True),HEIGHT_LEVELS.index(height))
     env=MovingPlatformLanding(cfg)
     try:

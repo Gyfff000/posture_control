@@ -272,6 +272,9 @@ def train(args):
     source_training=source.get('training_metadata') or {}
     args.height_curriculum=bool(args.height_curriculum or source_training.get('height_curriculum',False))
     height_level=(source_training.get('height_level') if source_training.get('height_level') is not None else 1) if args.height_level is None else args.height_level
+    # Resolve saved height physically: inserting a level must not reinterpret old checkpoints.
+    if args.height_level is None and args.height_curriculum and source_config.get('initial_height') in HEIGHT_LEVELS:
+        height_level=HEIGHT_LEVELS.index(source_config['initial_height'])
     if args.height_curriculum and not args.motion_curriculum:
         raise ValueError('Height curriculum requires --motion-curriculum')
     if args.height_level is not None and not args.height_curriculum:
@@ -299,6 +302,9 @@ def train(args):
                     'platform_turn_rate_degrees','platform_speed_noise','initial_height','offset_xy','offset_z','episode_seconds','center_camera_size'))
     task_changed=task_changed or bool(source_training.get('motion_curriculum',False))!=args.motion_curriculum
     task_changed=task_changed or bool(source_training.get('height_curriculum',False))!=args.height_curriculum
+    # Validation indices and seed sets change when a new height is inserted.
+    if args.height_curriculum and tuple(source_training.get('height_schedule',()))!=HEIGHT_LEVELS:
+        task_changed=True
     task_changed=task_changed or source_config.get('near_controller_version',1)!=config.near_controller_version
     task_changed=task_changed or bool(source_config.get('near_partial_tracking',False))!=config.near_partial_tracking
     env = MovingPlatformLanding(config,gui=args.gui)

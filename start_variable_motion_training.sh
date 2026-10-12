@@ -18,6 +18,12 @@ checkpoint="${1:-$checkpoint}"
 phase_args=()
 height_args=()
 if [[ "${LANDING_HEIGHT_CURRICULUM:-0}" == "1" ]]; then height_args=(--height-curriculum); fi
+if [[ -n "${LANDING_HEIGHT_LEVEL:-}" ]]; then
+    if [[ "${LANDING_HEIGHT_CURRICULUM:-0}" != "1" || ! "$LANDING_HEIGHT_LEVEL" =~ ^[0-9]+$ ]]; then
+        printf 'LANDING_HEIGHT_LEVEL requires height curriculum and a nonnegative index.\n'; exit 1
+    fi
+    height_args+=(--height-level "$LANDING_HEIGHT_LEVEL")
+fi
 if [[ -n "${2:-}" ]]; then
     if [[ ! "$2" =~ ^[0-3]$ ]]; then printf 'Motion phase must be 0..3.\n'; exit 1; fi
     phase_args=(--motion-phase "$2")

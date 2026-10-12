@@ -24,6 +24,27 @@
       "confidence": 0.6638190954773869
     },
     {
+      "height_m": 3.5,
+      "seed": 301,
+      "auxiliary_size": 252,
+      "center_error_m": 0.17295519241187476,
+      "confidence": 0.5917387127761767
+    },
+    {
+      "height_m": 3.5,
+      "seed": 302,
+      "auxiliary_size": 252,
+      "center_error_m": 0.15293130234881921,
+      "confidence": 0.627617148554337
+    },
+    {
+      "height_m": 3.5,
+      "seed": 303,
+      "auxiliary_size": 252,
+      "center_error_m": 0.18578495857467023,
+      "confidence": 0.6110843373493976
+    },
+    {
       "height_m": 4.0,
       "seed": 301,
       "auxiliary_size": 252,
