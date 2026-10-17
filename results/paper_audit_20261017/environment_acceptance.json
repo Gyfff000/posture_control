@@ -1,0 +1,95 @@
+{
+  "status": "passed",
+  "checks": {
+    "world_velocity_xyzw_encoding": true,
+    "target_truth_excluded_from_entire_own_history": true,
+    "camera_responds_to_target_motion": true,
+    "episode_reset_clears_histories": true,
+    "body_fixed_camera_responds_to_attitude": true,
+    "constant_motion_world_axes_30_steps": true,
+    "timeout_and_reset_enforced": true,
+    "reward_boundary_and_visibility_semantics": true
+  },
+  "injected_contact_cases": [
+    {
+      "case": "center",
+      "yaw_rad": 0.0,
+      "event": "success",
+      "expected": "success",
+      "platform_contacts": 1,
+      "ground_contacts": 0
+    },
+    {
+      "case": "edge",
+      "yaw_rad": 0.0,
+      "event": "platform_edge",
+      "expected": "platform_edge",
+      "platform_contacts": 1,
+      "ground_contacts": 0
+    },
+    {
+      "case": "off_platform",
+      "yaw_rad": 0.0,
+      "event": "ground",
+      "expected": "ground",
+      "platform_contacts": 0,
+      "ground_contacts": 1
+    },
+    {
+      "case": "center",
+      "yaw_rad": 0.7853981633974483,
+      "event": "success",
+      "expected": "success",
+      "platform_contacts": 1,
+      "ground_contacts": 0
+    },
+    {
+      "case": "edge",
+      "yaw_rad": 0.7853981633974483,
+      "event": "platform_edge",
+      "expected": "platform_edge",
+      "platform_contacts": 1,
+      "ground_contacts": 0
+    },
+    {
+      "case": "off_platform",
+      "yaw_rad": 0.7853981633974483,
+      "event": "ground",
+      "expected": "ground",
+      "platform_contacts": 0,
+      "ground_contacts": 1
+    }
+  ],
+  "reward_boundaries": [
+    {
+      "distance_m": 0.0,
+      "r_z": 1.0,
+      "r_xy": 1.0,
+      "r_landing": 0.0,
+      "reward": 1.4
+    },
+    {
+      "distance_m": 5.0,
+      "r_z": 1.0,
+      "r_xy": 0.18274399763155683,
+      "r_landing": 0.0,
+      "reward": 1.0730975990526228
+    },
+    {
+      "distance_m": 10.0,
+      "r_z": 1.0,
+      "r_xy": 0.0,
+      "r_landing": 0.0,
+      "reward": 1.0
+    },
+    {
+      "distance_m": 10.001,
+      "r_z": 1.0,
+      "r_xy": 0.0,
+      "r_landing": 0.0,
+      "reward": 1.0
+    }
+  ],
+  "interpretation": "normalized horizontal reward + actual vertical speed guard; not author-verified",
+  "limitation": "Injected contacts validate event logic, not a trained policy or paper success rate."
+}

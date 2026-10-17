@@ -38,13 +38,19 @@ class PaperCritic(nn.Module):
         return self.q1(x),self.q2(x)
 
 class PaperAgent(DrQV2):
-    def __init__(self,cfg=None):
+    def __init__(self,cfg=None,device='cpu'):
+        requested=('cuda' if torch.cuda.is_available() else 'cpu') if device=='auto' else device
+        self.device=torch.device(requested)
+        if self.device.type not in ('cpu','cuda'):raise ValueError('Supported devices: cpu, cuda, auto')
+        if self.device.type=='cuda' and not torch.cuda.is_available():
+            raise RuntimeError('CUDA requested but unavailable; install a CUDA PyTorch build on an NVIDIA GPU machine')
         self.cfg=cfg or AgentConfig()
         if self.cfg.proprio_dim!=21:raise ValueError('Paper agent requires 21D own state')
         torch.set_num_threads(self.cfg.torch_threads);torch.manual_seed(self.cfg.seed)
         self.encoder=CheckpointEncoder();self.actor=PaperActor(self.cfg);self.critic=PaperCritic(self.cfg)
         self.target=PaperCritic(self.cfg);self.target.load_state_dict(self.critic.state_dict())
         self.target.requires_grad_(False);self.target.eval()
+        for net in (self.encoder,self.actor,self.critic,self.target):net.to(self.device)
         self.optimizers=[torch.optim.Adam(net.parameters(),lr=self.cfg.learning_rate)
                          for net in (self.encoder,self.actor,self.critic)]
         self.updates=0
@@ -52,10 +58,16 @@ class PaperAgent(DrQV2):
     def act(self,obs,step=0,evaluation=False):
         training=self.actor.training
         self.actor.eval()
-        try:return super().act(obs,step,evaluation)
+        try:
+            pixels=torch.as_tensor(obs['pixels'],device=self.device).unsqueeze(0)
+            own=torch.as_tensor(obs['proprio'],device=self.device).unsqueeze(0)
+            mean=self.actor(torch.cat([self.encoder(pixels),own],dim=-1))
+            action=mean if evaluation else self.sample(mean,self.stddev(step))
+            return action[0].cpu().numpy()
         finally:self.actor.train(training)
     def update(self,batch,step,**kwargs):
         if kwargs:raise ValueError('Paper updates accept no imitation/smoothness options')
+        batch={key:torch.as_tensor(value,device=self.device) for key,value in batch.items()}
         result=super().update(batch,step)
         # Target BN statistics are state, not optimized parameters.
         with torch.no_grad():
@@ -63,3 +75,13 @@ class PaperAgent(DrQV2):
                 if target.is_floating_point():target.lerp_(actual,self.cfg.tau)
                 else:target.copy_(actual)
         return result
+    @classmethod
+    def load(cls,path,device='cpu'):
+        data=torch.load(path,map_location='cpu',weights_only=False)
+        agent=cls(AgentConfig(**data['agent_config']),device=device)
+        for key in ('encoder','actor','critic','target'):
+            getattr(agent,key).load_state_dict(data[key])
+        # PyTorch loads floating optimizer state onto each parameter's device.
+        for optimizer,state in zip(agent.optimizers,data['optimizers']):optimizer.load_state_dict(state)
+        agent.updates=data['updates']
+        return agent,data

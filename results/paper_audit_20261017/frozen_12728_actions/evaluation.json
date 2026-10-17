@@ -1,0 +1,178 @@
+{
+  "method": "Ladosz2024 independent DrQ-v2 / Fig3 BatchNorm / no expert or prediction assistance",
+  "device": "cpu",
+  "checkpoint": "runs/paper_ladosz2024_guarded_seed1_20261017_191847/latest.pt",
+  "checkpoint_sha256": "209354b6df36a7d437de2f7339ca788da4bfb3dbcc93bfef6287fecb09b115b7",
+  "checkpoint_training_steps": 12728,
+  "checkpoint_training_updates": 1365,
+  "environment": {
+    "physics_hz": 300,
+    "control_hz": 60,
+    "policy_hz": 30,
+    "episode_seconds": 30.0,
+    "initial_height": 10.0,
+    "offset_xy": 3.0,
+    "offset_z": 3.0,
+    "platform_speed_min": 0.0,
+    "platform_speed_max": 1.0,
+    "platform_yaw_degrees": 0.0,
+    "platform_motion": "constant",
+    "platform_accel_max": 0.15,
+    "platform_turn_rate_degrees": 10.0,
+    "platform_speed_noise": 0.3,
+    "platform_top": 0.3,
+    "camera_fov": 90.0,
+    "center_camera_size": 84,
+    "camera_offset_x": 0.045,
+    "camera_offset_z": -0.008,
+    "camera_near": 0.001,
+    "visible_pixels": 1,
+    "horizontal_reward": "normalized_interpretation",
+    "terminal_overrides_visibility": false,
+    "visibility_gate": true,
+    "guard_actual_vertical_velocity": true,
+    "acceleration_limit_xy": 1000000000.0,
+    "acceleration_limit_z": 1000000000.0,
+    "reward_mode": "paper_interpretation",
+    "escape_distance": 0.0,
+    "lost_view_seconds": 0.0,
+    "teacher_descent_fast": 0.35,
+    "smooth_observation": false,
+    "action_smooth_weight": 0.0,
+    "soft_landing_weight": 0.0,
+    "jerk_limit_xy": 0.0,
+    "jerk_limit_z": 0.0,
+    "velocity_response_seconds": 0.1,
+    "prediction_guidance": false,
+    "center_prediction_seconds": 2.0,
+    "center_confidence_tau": 0.85,
+    "center_min_confidence": 0.1,
+    "center_min_measurement_quality": 0.35,
+    "prediction_reward_weight": 4.0,
+    "near_landing_assist": false,
+    "near_enter_height": 1.0,
+    "near_exit_height": 1.3,
+    "near_prediction_seconds": 8.0,
+    "near_confidence_tau": 6.0,
+    "near_min_confidence": 0.06,
+    "near_max_position_std": 0.6,
+    "near_command_slew_xy": 0.6,
+    "near_command_slew_z": 0.3,
+    "near_unknown_grace_seconds": 2.0,
+    "near_partial_tracking": false,
+    "near_controller_version": 1,
+    "terminal_finish_enabled": false,
+    "terminal_entry_height": 0.22,
+    "terminal_finish_seconds": 4.0,
+    "terminal_finish_speed": 0.1
+  },
+  "variant": "baseline",
+  "episodes": 3,
+  "successes": 0,
+  "success_rate": 0.0,
+  "optimization_updates": 0,
+  "checkpoint_unchanged": true,
+  "wall_seconds": 11.804148632999997,
+  "rows": [
+    {
+      "seed": 901001,
+      "initial": {
+        "position": [
+          -0.571967672846414,
+          1.986458934942175,
+          11.111592309061677
+        ],
+        "platform_velocity": [
+          0.7304324714055757,
+          0.0,
+          0.0
+        ]
+      },
+      "event": "ground",
+      "success": false,
+      "time_s": 22.533333333333335,
+      "steps": 676,
+      "episode_return": 107.53123088064537,
+      "xy_error_m": 60.84786060274722,
+      "visible_fraction": 0.1863905325443787,
+      "normalized_action_mean": [
+        -1.0,
+        1.0,
+        -1.0
+      ],
+      "saturated_action_component_fraction": 1.0,
+      "pre_contact_relative_velocity": [
+        -2.2062233220614784,
+        1.472536569660088,
+        -0.4940555374213761
+      ]
+    },
+    {
+      "seed": 901002,
+      "initial": {
+        "position": [
+          0.17027329352360887,
+          2.9715681493646313,
+          8.777535482624417
+        ],
+        "platform_velocity": [
+          0.7553915784231645,
+          0.0,
+          0.0
+        ]
+      },
+      "event": "ground",
+      "success": false,
+      "time_s": 17.80000000000027,
+      "steps": 534,
+      "episode_return": 83.20729803686831,
+      "xy_error_m": 48.63721972713492,
+      "visible_fraction": 0.1891385767790262,
+      "normalized_action_mean": [
+        -1.0,
+        1.0,
+        -1.0
+      ],
+      "saturated_action_component_fraction": 1.0,
+      "pre_contact_relative_velocity": [
+        -2.225899880101747,
+        1.4772313722196881,
+        -0.4939847483260041
+      ]
+    },
+    {
+      "seed": 901003,
+      "initial": {
+        "position": [
+          0.9661374709798811,
+          -1.2210263202830878,
+          11.856498046720738
+        ],
+        "platform_velocity": [
+          0.13942660744761382,
+          0.0,
+          0.0
+        ]
+      },
+      "event": "ground",
+      "success": false,
+      "time_s": 24.03333333333325,
+      "steps": 721,
+      "episode_return": 190.56642703631303,
+      "xy_error_m": 50.49817625216001,
+      "visible_fraction": 0.27184466019417475,
+      "normalized_action_mean": [
+        -1.0,
+        1.0,
+        -1.0
+      ],
+      "saturated_action_component_fraction": 1.0,
+      "pre_contact_relative_velocity": [
+        -1.618343000894055,
+        1.4791515969000204,
+        -0.4939506944832063
+      ]
+    }
+  ],
+  "claim": "Small frozen diagnostic; not the paper final 500-episode evaluation."
+}

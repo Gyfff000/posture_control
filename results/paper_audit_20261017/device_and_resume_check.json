@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "auto_device": "cpu",
+  "explicit_cuda_unavailable_error": "CUDA requested but unavailable; install a CUDA PyTorch build on an NVIDIA GPU machine",
+  "temporary_headless_train_steps": 3,
+  "resumed_total_steps": 5,
+  "saved_device_metadata": true,
+  "main_training_run_unchanged": true,
+  "gpu_execution_tested": false
+}

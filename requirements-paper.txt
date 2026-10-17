@@ -1,0 +1,4 @@
+# Install the chosen torch CPU/CUDA build separately first.
+# Existing shared simulator dependencies do not pin a CPU-only torch build.
+-r requirements-cpu.txt
+Pillow==12.3.0

@@ -1,0 +1,6 @@
+{
+  "status": "passed",
+  "same_three_seed_physics_before_after_device_support": true,
+  "hidden_gui_frame_render": true,
+  "checkpoint_unchanged": true
+}

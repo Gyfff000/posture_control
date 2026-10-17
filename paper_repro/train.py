@@ -41,6 +41,7 @@ def main():
     p.add_argument('--variant',choices=['baseline','no_los','constant_descent'],default='baseline')
     p.add_argument('--reward-interpretation',choices=['normalized','literal'],default='normalized')
     p.add_argument('--vertical-reward',choices=['literal','actual_guard'],default='actual_guard')
+    p.add_argument('--device',choices=['cpu','cuda','auto'],default='cpu')
     p.add_argument('--gui',action='store_true');p.add_argument('--resume',action='store_true')
     p.add_argument('--eval-every-episodes',type=int,default=100);p.add_argument('--final-eval-episodes',type=int,default=500)
     p.add_argument('--checkpoint-every',type=int,default=1000)
@@ -52,15 +53,19 @@ def main():
         expected=dict(spec['arguments']);current={k:str(v) if isinstance(v,Path) else v for k,v in vars(a).items()}
         for key in ('seed','variant','reward_interpretation','vertical_reward'):
             if expected[key]!=current[key]:raise ValueError('Resume task mismatch: '+key)
-        agent,source=PaperAgent.load(a.output/'latest.pt')
+        agent,source=PaperAgent.load(a.output/'latest.pt',device=a.device)
         if (source.get('training_metadata') or {}).get('method')!=METHOD:raise ValueError('Assisted checkpoint rejected')
         meta=source['training_metadata'];completed=source['steps'];episodes=meta['episodes'];successes=meta['successes'];best=meta['best_mean_return']
         rng=np.random.default_rng();rng.bit_generator.state=meta['numpy_rng'];torch.set_rng_state(meta['torch_rng'])
+        if agent.device.type=='cuda' and meta.get('torch_cuda_rng') is not None:
+            states=meta['torch_cuda_rng']
+            if len(states)!=torch.cuda.device_count():raise ValueError('CUDA RNG device count changed; resume with the same visible GPU count')
+            torch.cuda.set_rng_state_all(states)
         replay=DiskReplay(a.output/'replay',acfg.replay_capacity,acfg.n_step,acfg.discount,a.seed,resume=True)
     else:
         if a.output.exists() and any(a.output.iterdir()):raise FileExistsError('Use a new run or --resume')
         a.output.mkdir(parents=True,exist_ok=True)
-        agent=PaperAgent(acfg);completed=episodes=successes=0;best=None;rng=np.random.default_rng(a.seed)
+        agent=PaperAgent(acfg,device=a.device);completed=episodes=successes=0;best=None;rng=np.random.default_rng(a.seed)
         replay=DiskReplay(a.output/'replay',acfg.replay_capacity,acfg.n_step,acfg.discount,a.seed)
     spec=dict(method=METHOD,claim='Independent paper-derived implementation; author ambiguities remain. No numerical reproduction claimed.',
         arguments={k:str(v) if isinstance(v,Path) else v for k,v in vars(a).items()},environment=cfg.to_dict(),agent=acfg.to_dict(),
@@ -75,7 +80,8 @@ def main():
           'camera':'90 degree FOV; synthetic H pad; exact original calibration/photo unavailable',
           'resume':'network, optimizer, replay and RNG restored; physics and pending n-step tail reset',
           'checkpoint_atomicity':'single writer; crash between replay and checkpoint save may require prior checkpoint',
-          'baseline_scope':'no image/domain randomization; separate missing-assets protocol describes randomized variant'})
+          'baseline_scope':'no image/domain randomization; separate missing-assets protocol describes randomized variant',
+          'training_device':str(agent.device),'device_resume':'Cross-device resume preserves weights/optimizers, not an identical random trajectory'})
     write_json(a.output/'config.json',spec);(a.output/'training.pid').write_text(str(os.getpid()))
     panel=None;env=None;pool=ThreadPoolExecutor(max_workers=1);stop=[False];metrics={};started=time.monotonic();reason='budget_reached';last_event='running'
     def request_stop(*_):stop[0]=True
@@ -84,9 +90,11 @@ def main():
         replay.flush()
         agent.save(a.output/name,cfg,completed,dict(method=METHOD,episodes=episodes,successes=successes,
             best_mean_return=best,numpy_rng=rng.bit_generator.state,torch_rng=torch.get_rng_state(),
+            torch_cuda_rng=torch.cuda.get_rng_state_all() if agent.device.type=='cuda' else None,
+            training_device=str(agent.device),
             reward_interpretation=a.reward_interpretation,vertical_reward=a.vertical_reward,variant=a.variant,exact_physics_resume=False))
     def status(state):
-        return dict(state=state,method=METHOD,seed=a.seed,step=completed,updates=agent.updates,episodes=episodes,
+        return dict(state=state,device=str(agent.device),method=METHOD,seed=a.seed,step=completed,updates=agent.updates,episodes=episodes,
             successes=successes,replay_size=replay.size,warmup=completed<acfg.warmup_steps,
             last_event=last_event,critic_loss=metrics.get('critic_loss'),wall_seconds=time.monotonic()-started,
             initial_height_m=cfg.initial_height,variant=a.variant)
@@ -131,7 +139,7 @@ def main():
             if completed%a.checkpoint_every==0:save();print('PAPER_STEP',completed,agent.updates,flush=True)
         save();write_json(a.output/'live_status.json',status(reason))
         if episodes>=a.episodes and a.final_eval_episodes and not stop[0] and not(panel and panel.stop):
-            selected,_=PaperAgent.load(a.output/'best.pt' if (a.output/'best.pt').exists() else a.output/'latest.pt')
+            selected,_=PaperAgent.load(a.output/'best.pt' if (a.output/'best.pt').exists() else a.output/'latest.pt',device=a.device)
             evaluate(selected,cfg,a.output/'final_evaluation.json',a.final_eval_episodes,900001+a.seed*1000,
                      a.variant=='constant_descent',panel)
         write_json(a.output/'summary.json',dict(status(reason),numerical_reproduction_complete=False))

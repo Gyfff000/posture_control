@@ -1,0 +1,33 @@
+{
+  "checkpoint_training_steps": 12728,
+  "sampled_replay_batch": 128,
+  "parameters_finite": true,
+  "actor_modes": {
+    "inference_running_statistics": {
+      "mean_action": [
+        -1.0,
+        1.0,
+        -1.0
+      ],
+      "saturated_component_fraction": 1.0,
+      "max_absolute_logit": 193.3477783203125,
+      "mean_absolute_logit": 138.32301330566406,
+      "mean_action_derivative_to_logit": 2.572386291996189e-38
+    },
+    "training_batch_statistics": {
+      "mean_action": [
+        -1.0,
+        1.0,
+        -1.0
+      ],
+      "saturated_component_fraction": 1.0,
+      "max_absolute_logit": 235.61822509765625,
+      "mean_absolute_logit": 125.38965606689453,
+      "mean_action_derivative_to_logit": 2.1590039978036657e-08
+    }
+  },
+  "checkpoint_unchanged": true,
+  "replay_state_unchanged": true,
+  "optimization_updates": 0,
+  "interpretation": "Saturation diagnosis only; this comparison does not establish which hyperparameter caused it."
+}
