@@ -5,9 +5,9 @@ import json,tempfile
 import numpy as np
 import pybullet as p
 import torch
-from landing_repro.agent import Replay
+from landing_repro.agent import Replay,Encoder
 from landing_repro.environment import reward_terms
-from .agent import PaperAgent
+from .agent import PaperAgent,CheckpointEncoder
 from .environment import PaperLanding
 from .protocols import ladosz_configs,PERCHRL_PAPER,LADOSZ_PAPER
 from .replay import DiskReplay
@@ -62,6 +62,12 @@ def main():
             assert literal_v['reward']>1e20 and guarded_v['reward']<1.
             assert cfg.guard_actual_vertical_velocity
         finally:env.close()
+    # Activation checkpointing changes memory scheduling, not the 1024-sample BN batch.
+    torch.manual_seed(7);standard=Encoder();chunked=CheckpointEncoder();chunked.load_state_dict(standard.state_dict())
+    inputs=torch.randint(0,256,(64,3,84,84),dtype=torch.uint8)
+    y1=standard(inputs);y2=chunked(inputs);torch.testing.assert_close(y1,y2,atol=1e-5,rtol=1e-4)
+    y1.square().mean().backward();y2.square().mean().backward()
+    for p1,p2 in zip(standard.parameters(),chunked.parameters()):torch.testing.assert_close(p1.grad,p2.grad,atol=1e-5,rtol=1e-3)
     torch.manual_seed(1);policy=PerchPolicy(history_length=30)
     history=torch.randn(4,30,10);own=torch.randn(4,12);rho=torch.ones(4,1);previous=torch.zeros(4,4);future=torch.randn(4,15,10)
     action=policy.action(history,own,rho,previous)
@@ -74,7 +80,7 @@ def main():
     samples=sample_initialization(np.random.default_rng(42),1000)
     for key,(lo,hi) in PERCHRL_PAPER['initialization'].items():assert np.all((samples[key]>=lo)&(samples[key]<=hi))
     result=dict(status='passed',ladosz_resets=rows,physics_steps=36,disk_replay_equivalence=True,
-        disk_replay_resume=True,policy_optimizer_update=True,checkpoint_reload=True,
+        disk_replay_resume=True,encoder_checkpoint_gradient_equivalence=True,policy_optimizer_update=True,checkpoint_reload=True,
         no_assisted_control=True,no_platform_truth_in_proprio=True,
         perchrl_components={'initialization_samples':1000,'actor_shape':[4,4],
             'future_inputs_critic_only':True,'history_length_30':'implementation choice, not verified from paper'},

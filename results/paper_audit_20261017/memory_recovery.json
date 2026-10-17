@@ -1,0 +1,13 @@
+{
+  "fixes": [
+    "Buffered file reads instead of 12.8GB replay mappings",
+    "Activation checkpointing in 32-sample convolution chunks; BatchNorm/loss retain full 1024 batch"
+  ],
+  "saved_step": 9000,
+  "published_batch_size": 1024,
+  "event": "Windows virtual-memory exhaustion during first real batch",
+  "claim": "Memory feasibility evidence, not landing performance",
+  "independent_probe_peak_rss_mib": 1174.17578125,
+  "encoding_gradient_equivalence": "passed",
+  "replay_capacity": 300000
+}

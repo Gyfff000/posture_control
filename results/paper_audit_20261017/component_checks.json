@@ -95,6 +95,7 @@
   "physics_steps": 36,
   "disk_replay_equivalence": true,
   "disk_replay_resume": true,
+  "encoder_checkpoint_gradient_equivalence": true,
   "policy_optimizer_update": true,
   "checkpoint_reload": true,
   "no_assisted_control": true,

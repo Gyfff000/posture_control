@@ -1,0 +1,17 @@
+{
+  "purpose": "synthetic gradient and memory feasibility only; no landing performance",
+  "batch": 1024,
+  "status": "passed",
+  "metrics": {
+    "critic_loss": 0.04554016515612602,
+    "actor_loss": -1.8851897716522217,
+    "batch_reward": 0.10000001639127731,
+    "encoder_grad_norm": 0.009406376630067825,
+    "target_q_mean": 0.06669791042804718,
+    "updates": 1,
+    "imitation_loss": 0.0,
+    "smooth_loss": 0.0
+  },
+  "seconds": 5.457446465,
+  "peak_rss_mib": 1174.17578125
+}
