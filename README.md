@@ -46,3 +46,9 @@
 ## 平滑轨迹改进
 
 新增自身指令记忆、动作变化损失、指令加速度/jerk 限制及软着陆奖励。初步测试真实飞行 jerk 下降，但降落成功率也下降，目前继续进行固定低速移动平台训练恢复跟踪能力。尚未证明稳定平滑降落，详情见 [完整实验说明](docs/smooth_landing.md)。
+
+## 2026-10-17：两篇论文的独立仿真复现
+
+已新增[完整复现范围、当前执行与未完成项](docs/full_reproduction_plan.md)及[需要作者确认的参数](docs/author_reproduction_questions.md)。`paper_repro/`与旧辅助训练分开；Ladosz2024使用原始10米任务、Table I批量及网络，从零开始。当前采用明确标注的奖励解释版本，不能声称已逐项等同作者实现或得到论文成绩。PerchRL已整理协议和部分CPU组件，但原OmniDrones/Isaac Sim环境、任务源码及GPU条件未就绪，未开始正式PPO训练。
+
+桌面入口：“无人机训练入口/开始论文原方法独立实验.cmd”。当前实验目录：`runs/current_paper_training.txt`。旧辅助模型完整保留。程序检查结果见`results/paper_audit_20261017/`。

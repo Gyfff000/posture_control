@@ -1,0 +1,112 @@
+{
+  "status": "passed",
+  "ladosz_resets": [
+    {
+      "seed": 0,
+      "height_m": 7.245841143617169,
+      "platform_velocity": [
+        0.016527635528529094,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "seed": 1,
+      "height_m": 7.864957676317803,
+      "platform_velocity": [
+        0.9486494471372439,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "seed": 2,
+      "height_m": 11.885354443565681,
+      "platform_velocity": [
+        0.0919159421350969,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "seed": 3,
+      "height_m": 11.807646791238382,
+      "platform_velocity": [
+        0.5821620360643678,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "seed": 4,
+      "height_m": 12.857462234246224,
+      "platform_velocity": [
+        0.08083602389560218,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "seed": 5,
+      "height_m": 10.091953366252852,
+      "platform_velocity": [
+        0.2858013800881416,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "seed": 6,
+      "height_m": 9.214403438772269,
+      "platform_velocity": [
+        0.37449676558788236,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "seed": 7,
+      "height_m": 11.654114141471162,
+      "platform_velocity": [
+        0.22520718999059186,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "seed": 8,
+      "height_m": 8.912265030913101,
+      "platform_velocity": [
+        0.7885489358200289,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "seed": 9,
+      "height_m": 10.618888900309372,
+      "platform_velocity": [
+        0.7775340829201788,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "physics_steps": 36,
+  "disk_replay_equivalence": true,
+  "disk_replay_resume": true,
+  "policy_optimizer_update": true,
+  "checkpoint_reload": true,
+  "no_assisted_control": true,
+  "no_platform_truth_in_proprio": true,
+  "perchrl_components": {
+    "initialization_samples": 1000,
+    "actor_shape": [
+      4,
+      4
+    ],
+    "future_inputs_critic_only": true,
+    "history_length_30": "implementation choice, not verified from paper"
+  },
+  "numerical_reproduction_complete": false
+}

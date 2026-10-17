@@ -1,0 +1,15 @@
+{
+  "run": "runs/paper_ladosz2024_guarded_seed1_20261017_191847",
+  "seed": 1,
+  "step": 5727,
+  "updates": 0,
+  "status": "training",
+  "initial_height_m": 10.0,
+  "batch_size": 1024,
+  "replay_capacity": 300000,
+  "learning_rate": 0.005,
+  "vertical_reward": "actual_guard",
+  "horizontal_reward": "normalized",
+  "no_assistance": true,
+  "claim": "Startup record only; not convergence or final performance"
+}

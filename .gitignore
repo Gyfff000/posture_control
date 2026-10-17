@@ -4,3 +4,6 @@ runs/
 *.pt
 *.xwd
 .venv/
+
+.paper_sources_*/
+reports/

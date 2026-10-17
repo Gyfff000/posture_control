@@ -1,0 +1,96 @@
+{
+  "title": "PerchRL: Vision-Based Agile Perching on Inclined Platforms under Rapid and Irregular Motion",
+  "arxiv": "2606.03441v3",
+  "source": "https://arxiv.org/html/2606.03441v3",
+  "algorithm": "PPO",
+  "simulator": "OmniDrones / Isaac Sim",
+  "parallel_envs": 8192,
+  "physics_hz": 100,
+  "episode_steps": 500,
+  "future_critic_observations": 15,
+  "stages": [
+    "state-based pretraining",
+    "visibility-gated pose-observation fine-tuning"
+  ],
+  "initialization": {
+    "platform_speed_m_s": [
+      0.0,
+      5.0
+    ],
+    "inclination_degrees": [
+      0.0,
+      90.0
+    ],
+    "relative_altitude_m": [
+      1.2,
+      2.0
+    ],
+    "horizontal_distance_m": [
+      1.2,
+      3.5
+    ],
+    "azimuth_offset_degrees": [
+      -60.0,
+      60.0
+    ],
+    "roll_pitch_rad": [
+      -0.6,
+      0.6
+    ],
+    "horizontal_velocity_m_s": [
+      -0.1,
+      0.1
+    ],
+    "vertical_velocity_m_s": [
+      -0.2,
+      0.2
+    ],
+    "roll_pitch_rate_rad_s": [
+      -0.2,
+      0.2
+    ],
+    "yaw_rate_rad_s": [
+      -0.1,
+      0.1
+    ]
+  },
+  "randomization": {
+    "mass_fraction": 0.3,
+    "inertia_fraction": 0.1,
+    "thrust_to_weight_fraction": 0.15,
+    "camera_tilt_degrees": [
+      -5.0,
+      5.0
+    ],
+    "detector_hz": [
+      20.0,
+      60.0
+    ]
+  },
+  "experiments": {
+    "state": [
+      "PerchRL",
+      "w/o temporal augmentation",
+      "Fast-Perching",
+      "InclineLander"
+    ],
+    "trajectories": [
+      "reciprocating linear",
+      "racetrack",
+      "figure-8",
+      "random B-spline"
+    ],
+    "vision": [
+      "full model",
+      "LSTM baseline",
+      "input augmentation / active perception ablations"
+    ],
+    "baseline_training_steps_up_to": 40000000
+  },
+  "unresolved": [
+    "official PerchRL task repository not linked by checked paper/author page as of 2026-10-17",
+    "PPO hyperparameters, actor TCN channels/kernels/history and reward weights incomplete",
+    "nominal robot parameters, camera calibration and contact tolerances not fully specified",
+    "exact pose noise model and trajectory geometry settings require upstream code or clarification"
+  ]
+}

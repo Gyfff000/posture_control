@@ -1,0 +1,7 @@
+{
+  "episode_return_example": 8.012693078123351E+26,
+  "status": "stopped_and_preserved",
+  "run": "runs/paper_ladosz2024_seed1_20261017_191545",
+  "training_claim": "Not a converged or numerically valid model",
+  "reason": "Published Eq8 command-velocity gate with actual-velocity exponential produces extreme rewards during physical overspeed"
+}

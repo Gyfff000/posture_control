@@ -1,0 +1,56 @@
+{
+  "checked_date": "2026-10-17",
+  "python": "3.10.22",
+  "torch": "2.2.2+cpu",
+  "cuda_available": false,
+  "cuda_device_count": 0,
+  "isaacsim_installed": false,
+  "omnidrones_installed": false,
+  "disk_free_gib": 47.899864196777344,
+  "sources": [
+    {
+      "name": "perchrl_v3",
+      "url": "https://arxiv.org/html/2606.03441v3",
+      "status": 200,
+      "sha256": "8bb997ed9c1d3af572c954bd7e63d2e95be4e21dd89f4349d0bf76e054ac6ccb",
+      "bytes": 221175
+    },
+    {
+      "name": "author_repos",
+      "url": "https://api.github.com/users/lzh2001-debug/repos?per_page=100",
+      "status": 200,
+      "sha256": "1287ce3308fdb7e82261382d4f25336c6b99b10a0d2e37f930aa8fede981ae45",
+      "bytes": 11687,
+      "matching_repo_names": []
+    },
+    {
+      "name": "omnidrones_commit",
+      "url": "https://api.github.com/repos/btx0424/OmniDrones/commits/main",
+      "status": 200,
+      "sha256": "335f5e6981d84981de5645d44c3274e66e9b9189745bab3cff39c1e7299caf27",
+      "bytes": 5453,
+      "sha": "9ce7c2028b71be64d7e748c31f685cd3b54afe27"
+    },
+    {
+      "name": "omnidrones_install",
+      "url": "https://omnidrones.readthedocs.io/en/latest/installation.html",
+      "status": 200,
+      "sha256": "57bb6fa5adb4db2213711f8a47c932a00a21e905333cfb6a3a9fd5a2a86616c9",
+      "bytes": 29536
+    },
+    {
+      "name": "drqv2_reference",
+      "url": "https://raw.githubusercontent.com/facebookresearch/drqv2/c0c650b76c6e5d22a7eb5f2edffd1440fe94f8ef/drqv2.py",
+      "status": 200,
+      "sha256": "e946bf201f6bb3587d0fba20a88b8afca407c5eb6099f7a2283596ae7b6c6273",
+      "bytes": 9047
+    }
+  ],
+  "exact_perchrl_training_ready": false,
+  "blockers": [
+    "No NVIDIA GPU; installed torch is CPU only",
+    "Isaac Sim and OmniDrones not installed",
+    "Task-specific code and incomplete hyperparameters still need verification"
+  ],
+  "claims": "No full or numerical reproduction has been completed"
+}
